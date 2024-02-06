@@ -1,0 +1,54 @@
+Turbo Assembler	 Version 4.1	    02/05/24 23:22:40	    Page 1
+meow.asm
+
+
+
+      1	0000			     .model tiny
+      2	0000			     .code
+      3				     .286
+      4				     org 100h
+      5
+      6	0100  B4 09		     Start:	     mov ah, 09h
+      7	0102  BA 010Cr				     mov dx, offset MyStr
+      8	0105  CD 21				     int 21h		     ; puts(MyStr)
+      9
+     10	0107  B8 4C00				     mov ax, 4c00h
+     11	010A  CD 21				     int 21h		     ; exit(al = 0)
+     12
+     13	010C  50 75 70 75 70 75	0D+  MyStr db "Pupupu",	0dh, 0ah, "$"
+     14	      0A 24
+     15
+     16				     end Start
+Turbo Assembler	 Version 4.1	    02/05/24 23:22:40	    Page 2
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "02/05/24"
+??FILENAME			  Text	 "meow	  "
+??TIME				  Text	 "23:22:40"
+??VERSION			  Number 040A
+@32BIT				  Text	 0
+@CODE				  Text	 DGROUP
+@CODESIZE			  Text	 0
+@CPU				  Text	 0707H
+@CURSEG				  Text	 _TEXT
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@FILENAME			  Text	 MEOW
+@INTERFACE			  Text	 000H
+@MODEL				  Text	 1
+@STACK				  Text	 DGROUP
+@WORDSIZE			  Text	 2
+MYSTR				  Byte	 DGROUP:010C
+START				  Near	 DGROUP:0100
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  _DATA				  16  0000 Word	  Public  DATA
+  _TEXT				  16  0115 Word	  Public  CODE
+
