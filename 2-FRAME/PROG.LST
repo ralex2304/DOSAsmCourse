@@ -1,4 +1,4 @@
-Turbo Assembler	 Version 4.1	    02/10/24 02:02:21	    Page 1
+Turbo Assembler	 Version 4.1	    02/10/24 20:25:35	    Page 1
 prog.asm
 
 
@@ -16,170 +16,333 @@ prog.asm
 1    11					     endm		     ; end of program
 1    12
      13
-     14	0100  EB 5E 90		     Start:	     jmp main
+     14	0100  E9 00D8		     Start:	     jmp main
      15
      16	      =0050		     ScreenWidth     equ 80
-     17	      =001A		     ScreemHeight    equ 26
+     17	      =001A		     ScreenHeight    equ 26
      18
-     19				     ;--------------------------------------
-     20				     ; Draws symbol
-     21				     ; Entry:	     DH	- line num
-     22				     ;		     DL	- col num
-     23				     ;		     CL	- symbol
-     24				     ;		     CH	- attr
-     25				     ; Assumes:	     ES	= 0b800h
-     26				     ; Destr:	     AX, BX
-     27				     ;--------------------------------------
-     28	0103			     DrawSymbol	     proc
+     19	      =0087		     ShadowAttrMask  equ 10000111b
+     20
+     21	      =004E		     FrameColorAttr  equ 01001110b
+     22	      =00C9		     TLCorner	     equ 0c9h
+     23	      =00BB		     TRCorner	     equ 0bbh
+     24	      =00C8		     BLCorner	     equ 0c8h
+     25	      =00BC		     BRCorner	     equ 0bch
+     26	      =00BA		     VLine	     equ 0bah
+     27	      =00CD		     HLine	     equ 0cdh
+     28	      =0020		     Space	     equ ' '
      29
-     30	0103  52				     push DX
-     31
-     32	0104  8A C6				     mov AL, DH
-     33	0106  B3 50				     mov BL, ScreenWidth
-     34	0108  F6 E3				     mul BL	; AX = DH * ScreenWidth
-     35
-     36	010A  B6 00				     mov DH, 0
-     37	010C  03 C2				     add AX, DX	; AX +=	DL (col	num)
-     38
-     39	010E  BB 0002				     mov BX, 2
-     40	0111  F7 E3				     mul BX	; (DX, AX) = AX	* 2
-     41
-     42	0113  8B D8				     mov BX, AX
-     43	0115  26: 89 0F				     mov word ptr ES:[BX], CX
-     44
-     45	0118  5A				     pop DX
-     46	0119  C3				     ret
-     47	011A					     endp
-     48				     ;--------------------------------------
-     49
-     50				     ;--------------------------------------
-     51				     ; Draws frame
-     52				     ; Entry:
-     53				     ; Assumes:	     ES	= 0b800h
-     54				     ; Destr:	     AX, BX, CX, DX
-     55				     ;--------------------------------------
-     56
-     57	      =004E		     FrameColorAttr  equ 01001110b
-Turbo Assembler	 Version 4.1	    02/10/24 02:02:21	    Page 2
+     30	      =0005		     FrameBegLine    equ 5
+     31	      =0014		     FrameBegCol     equ 20
+     32	      =0028		     FrameWidth	     equ 40
+     33	      =000A		     FrameHeight     equ 10
+     34
+     35				     ;--------------------------------------
+     36				     ; Draws symbol
+     37				     ; Entry:	     dh	- line num
+     38				     ;		     dl	- col num
+     39				     ;		     cl	- symbol
+     40				     ;		     ch	- attr
+     41				     ; Assumes:	     es	= 0b800h
+     42				     ; Destr:	     ax, bx
+     43				     ;--------------------------------------
+     44	0103			     DrawSymbol	     proc
+     45
+     46	0103  52				     push dx
+     47
+     48	0104  8A C6				     mov al, dh
+     49	0106  B3 50				     mov bl, ScreenWidth
+     50	0108  F6 E3				     mul bl	; ax = dh * ScreenWidth
+     51
+     52	010A  B6 00				     mov dh, 0
+     53	010C  03 C2				     add ax, dx	; ax +=	dl (col	num)
+     54
+     55	010E  BB 0002				     mov bx, 2
+     56	0111  F7 E3				     mul bx	; (dx, ax) = ax	* 2
+     57
+Turbo Assembler	 Version 4.1	    02/10/24 20:25:35	    Page 2
 prog.asm
 
 
 
-     58	      =0031		     TLCorner	     equ '1'
-     59	      =0032		     TRCorner	     equ '2'
-     60	      =0033		     BLCorner	     equ '3'
-     61	      =0034		     BRCorner	     equ '4'
-     62	      =0035		     VLine	     equ '5'
-     63	      =0036		     HLine	     equ '6'
-     64	      =0020		     Space	     equ ' '
+     58	0113  8B D8				     mov bx, ax
+     59	0115  26: 89 0F				     mov word ptr es:[bx], cx
+     60
+     61	0118  5A				     pop dx
+     62	0119  C3				     ret
+     63	011A					     endp
+     64				     ;--------------------------------------
      65
-     66	      =0005		     FrameBegLine    equ 5
-     67	      =0028		     FrameWidth	     equ 40
-     68	      =000A		     FrameHeight     equ 10
-     69
-     70	011A			     DrawFrame	     proc
-     71
-     72						     ; init attr
-     73	011A  B5 4E				     mov CH, FrameColorAttr
-     74
-     75						     ; top line
-     76	011C  B6 05				     mov DH, FrameBegLine
-     77	011E  B1 31				     mov CL, TLCorner
-     78	0120  B4 36				     mov AH, HLine
-     79	0122  B0 32				     mov AL, TRCorner
-     80	0124  E8 001C				     call DrawFrameLine
+     66				     ;--------------------------------------
+     67				     ; Modifies	symbol attr (applies & operation with attr mask)
+     68				     ; Entry:	     dh	- line num
+     69				     ;		     dl	- col num
+     70				     ;		     ch	- attr mask
+     71				     ; Assumes:	     es	= 0b800h
+     72				     ; Destr:	     ax, bx
+     73				     ;--------------------------------------
+     74	011A			     ModSymbolAttr   proc
+     75
+     76	011A  52				     push dx
+     77
+     78	011B  8A C6				     mov al, dh
+     79	011D  B3 50				     mov bl, ScreenWidth
+     80	011F  F6 E3				     mul bl	; ax = dh * ScreenWidth
      81
-     82						     ; middle lines
-     83	0127  FE C6		     DFWhile:	     inc DH
-     84	0129  80 FE 0D				     cmp DH, FrameHeight - 2 + FrameBegLine
-     85	012C  77 0B				     ja	DFWhileEnd
-     86
-     87	012E  B1 35				     mov CL, VLine
-     88	0130  B4 20				     mov AH, Space
-     89	0132  B0 35				     mov AL, VLine
-     90	0134  E8 000C				     call DrawFrameLine
-     91	0137  EB EE				     jmp DFWhile
-     92	0139			     DFWhileEnd:
-     93
-     94
-     95						     ; bottom line
-     96	0139  B1 33				     mov CL, BLCorner
-     97	013B  B4 36				     mov AH, HLine
-     98	013D  B0 34				     mov AL, BRCorner
-     99	013F  E8 0001				     call DrawFrameLine
-    100
-    101	0142  C3				     ret
-    102	0143					     endp
-    103				     ;---------------------------------------
-    104
-    105				     ;---------------------------------------
-    106				     ; Draws one line of fram (1 symbol	+ n symbols + 1	symbol)
-    107				     ;
-    108				     ; Entry:	     DH	- line number
-    109				     ;		     CH	- color	attr
-    110				     ;		     CL	- left symbol
-    111				     ;		     AH	- middle symbols
-    112				     ;		     AL	- right	symbol
-    113				     ; Assumes:	     ES	= 0b800h
-    114				     ;
-Turbo Assembler	 Version 4.1	    02/10/24 02:02:21	    Page 3
+     82	0121  B6 00				     mov dh, 0
+     83	0123  03 C2				     add ax, dx	; ax +=	dl (col	num)
+     84
+     85	0125  BB 0002				     mov bx, 2
+     86	0128  F7 E3				     mul bx	; (dx, ax) = ax	* 2
+     87
+     88	012A  8B D8				     mov bx, ax
+     89	012C  43				     inc bx ; attr address
+     90
+     91	012D  26: 20 2F				     and byte ptr es:[bx], ch
+     92
+     93	0130  5A				     pop dx
+     94	0131  C3				     ret
+     95	0132					     endp
+     96				     ;--------------------------------------
+     97
+     98				     ;--------------------------------------
+     99				     ; Draws frame
+    100				     ; Entry:
+    101				     ; Assumes:	     es	= 0b800h
+    102				     ; Destr:	     ax, bx, cx, dx
+    103				     ;--------------------------------------
+    104	0132			     DrawFrame	     proc
+    105
+    106						     ; init attr
+    107	0132  B5 4E				     mov ch, FrameColorAttr
+    108
+    109	0134  B6 05				     mov dh, FrameBegLine
+    110
+    111						     ; top empty line
+    112	0136  B1 20				     mov cl, Space
+    113	0138  E8 002E				     call DrawFrameEmptyLine
+    114	013B  FE C6				     inc dh
+Turbo Assembler	 Version 4.1	    02/10/24 20:25:35	    Page 3
 prog.asm
 
 
 
-    115				     ; Destr:	     AX, BX, CL, DL
-    116				     ;--------------------------------------
-    117
-    118	      =0014		     FrameBegCol     equ 20
-    119	      =0026		     MidSymNum	     equ FrameWidth - 2
-    120
-    121	0143			     DrawFrameLine   proc
-    122
-    123	0143  50				     push AX ; right and middle	symbols
-    124	0144  50				     push AX
-    125
-    126						     ; write left symbol
-    127	0145  B2 14				     mov DL, FrameBegCol
-    128	0147  E8 FFB9				     call DrawSymbol
-    129
-    130						     ; write middle symbols
-    131	014A  5B				     pop BX
-    132	014B  8A CF				     mov CL, BH
+    115
+    116						     ; top line
+    117	013D  B1 C9				     mov cl, TLCorner
+    118	013F  B4 CD				     mov ah, HLine
+    119	0141  B0 BB				     mov al, TRCorner
+    120	0143  E8 0032				     call DrawFrameLine
+    121
+    122						     ; middle lines
+    123	0146  FE C6		     DFWhile:	     inc dh
+    124	0148  80 FE 0C				     cmp dh, FrameHeight - 3 + FrameBegLine
+    125	014B  77 0B				     ja	DFWhileEnd
+    126
+    127	014D  B1 BA				     mov cl, VLine
+    128	014F  B4 20				     mov ah, Space
+    129	0151  B0 BA				     mov al, VLine
+    130	0153  E8 0022				     call DrawFrameLine
+    131	0156  EB EE				     jmp DFWhile
+    132	0158			     DFWhileEnd:
     133
-    134						     ; while (DL++ < MidSymNum + FrameBegCol):
-    135						     ;	     DrawSymbol()
-    136	014D  FE C2		     DFLwhile:	     inc DL
-    137	014F  80 FA 3A				     cmp DL, MidSymNum + FrameBegCol
-    138	0152  77 05				     ja	DFLwhileEnd
-    139
-    140	0154  E8 FFAC				     call DrawSymbol
-    141
-    142	0157  EB F4				     jmp DFLWhile
-    143	0159			     DFLwhileEnd:
-    144						     ; write right symbol
-    145	0159  5B				     pop BX
-    146	015A  8A CB				     mov CL, BL
-    147	015C  E8 FFA4				     call DrawSymbol
+    134						     ; bottom line
+    135	0158  B1 C8				     mov cl, BLCorner
+    136	015A  B4 CD				     mov ah, HLine
+    137	015C  B0 BC				     mov al, BRCorner
+    138	015E  E8 0017				     call DrawFrameLine
+    139	0161  FE C6				     inc dh
+    140
+    141						     ; bottom empty line
+    142	0163  B1 20				     mov cl, Space
+    143	0165  E8 0001				     call DrawFrameEmptyLine
+    144
+    145	0168  C3				     ret
+    146	0169					     endp
+    147				     ;---------------------------------------
     148
-    149	015F  C3				     ret
-    150	0160					     endp
-    151
-    152				     ;--------------------------------------
-    153
-    154				     ;======================================
-    155	0160			     main:
-    156	0160  BB B800				     mov BX, 0b800h
-    157	0163  8E C3				     mov ES, BX	; videomem seg
-    158
-    159						     ;call FillBackground
-    160	0165  E8 FFB2				     call DrawFrame
-    161
-    162						     EOP
-1   163	0168  B8 4C00				     mov ax, 4c00h
-1   164	016B  CD 21				     int 21h
-    165
-    166				     end	     Start
-Turbo Assembler	 Version 4.1	    02/10/24 02:02:21	    Page 4
+    149				     ;---------------------------------------
+    150				     ; Draws one line of fram (1 symbol	+ n symbols + 1	symbol)
+    151				     ;
+    152				     ; Entry:	     dh	- line number
+    153				     ;		     ch	- color	attr
+    154				     ;		     cl	- empty	symbol
+    155				     ; Assumes:	     es	= 0b800h
+    156				     ;
+    157				     ; Destr:	     ax, bx, cl, dl
+    158				     ;--------------------------------------
+    159	0169			     DrawFrameEmptyLine	     proc
+    160
+    161	0169  B2 14				     mov dl, FrameBegCol
+    162
+    163						     ; while (dl++ < FrameWidth	+ FrameBegCol -	1):
+    164						     ;	     DrawSymbol()
+    165	016B  80 FA 3B		     DFLEwhile:	     cmp dl, FrameWidth	+ FrameBegCol -	1
+    166	016E  77 07				     ja	DFLEwhileEnd
+    167
+    168	0170  E8 FF90				     call DrawSymbol
+    169
+    170	0173  FE C2				     inc dl
+    171	0175  EB F4				     jmp DFLEwhile
+Turbo Assembler	 Version 4.1	    02/10/24 20:25:35	    Page 4
+prog.asm
+
+
+
+    172	0177			     DFLEwhileEnd:
+    173
+    174	0177  C3				     ret
+    175	0178					     endp
+    176
+    177				     ;--------------------------------------
+    178
+    179				     ;--------------------------------------
+    180				     ; Draws one line of fram (1 symbol	+ n symbols + 1	symbol)
+    181				     ;
+    182				     ; Entry:	     dh	- line number
+    183				     ;		     ch	- color	attr
+    184				     ;		     cl	- left symbol
+    185				     ;		     ah	- middle symbol
+    186				     ;		     al	- right	symbol
+    187				     ; Assumes:	     es	= 0b800h
+    188				     ;
+    189				     ; Destr:	     ax, bx, cl, dl
+    190				     ;-------------------------------------
+    191	      =0024		     MidSymNumber    equ FrameWidth - 4
+    192
+    193	0178			     DrawFrameLine   proc
+    194
+    195	0178  50				     push ax ; right and middle	symbols
+    196	0179  50				     push ax
+    197	017A  51				     push cx ; left symbol
+    198
+    199						     ; write empty symbol
+    200	017B  B2 14				     mov dl, FrameBegCol
+    201	017D  B1 20				     mov cl, Space
+    202	017F  E8 FF81				     call DrawSymbol
+    203
+    204						     ; write left symbol
+    205	0182  FE C2				     inc dl
+    206	0184  5B				     pop bx
+    207	0185  8A CB				     mov cl, bl
+    208	0187  E8 FF79				     call DrawSymbol
+    209
+    210						     ; write middle symbols
+    211	018A  5B				     pop bx
+    212	018B  8A CF				     mov cl, bh
+    213
+    214						     ; while (dl++ < MidSymNumber + (FrameBegCol + 1)):
+    215						     ;	     DrawSymbol()
+    216	018D  FE C2		     DFLwhile:	     inc dl
+    217	018F  80 FA 39				     cmp dl, MidSymNumber + (FrameBegCol + 1)
+    218	0192  77 05				     ja	DFLwhileEnd
+    219
+    220	0194  E8 FF6C				     call DrawSymbol
+    221
+    222	0197  EB F4				     jmp DFLWhile
+    223	0199			     DFLwhileEnd:
+    224						     ; write right symbol
+    225	0199  5B				     pop bx
+    226	019A  8A CB				     mov cl, bl
+    227	019C  E8 FF64				     call DrawSymbol
+    228
+Turbo Assembler	 Version 4.1	    02/10/24 20:25:35	    Page 5
+prog.asm
+
+
+
+    229						     ; write empty symbol
+    230	019F  FE C2				     inc dl
+    231	01A1  B1 20				     mov cl, Space
+    232	01A3  E8 FF5D				     call DrawSymbol
+    233
+    234	01A6  C3				     ret
+    235	01A7					     endp
+    236
+    237				     ;--------------------------------------
+    238
+    239				     ;--------------------------------------
+    240				     ; Draws shadow
+    241				     ;
+    242				     ; Entry:
+    243				     ; Assumes:	     es	= 0b800h
+    244				     ;
+    245				     ; Destr:
+    246				     ;--------------------------------------
+    247	01A7			     DrawShadow	     proc
+    248
+    249	01A7  B5 87				     mov ch, ShadowAttrMask
+    250	01A9  B6 06				     mov dh, FrameBegLine + 1
+    251	01AB  B2 3C				     mov dl, FrameBegCol + FrameWidth
+    252
+    253	01AD  80 FE 0F		     DSvertWhile:    cmp dh, FrameBegLine + FrameHeight
+    254	01B0  77 07				     ja	DSvertWhileEnd
+    255
+    256	01B2  E8 FF65				     call ModSymbolAttr
+    257	01B5  FE C6				     inc dh
+    258	01B7  EB F4				     jmp DSvertWhile
+    259	01B9			     DSvertWhileEnd:
+    260	01B9  FE CE				     dec dh
+    261
+    262	01BB  80 FA 15		     DShorWhile:     cmp dl, FrameBegCol + 1
+    263	01BE  72 07				     jb	DShorWhileEnd
+    264
+    265	01C0  E8 FF57				     call ModSymbolAttr
+    266	01C3  FE CA				     dec dl
+    267	01C5  EB F4				     jmp DShorWhile
+    268	01C7			     DShorWhileEnd:
+    269
+    270	01C7  C3				     ret
+    271	01C8					     endp
+    272				     ;--------------------------------------
+    273
+    274				     ;--------------------------------------
+    275				     ; Paints console in blue
+    276				     ;
+    277				     ; Entry:
+    278				     ; Assumes:	     es	= 0b800h
+    279				     ; Destr:	     ch, bx
+    280				     ;--------------------------------------
+    281	01C8			     MakeConsoleBrightAgain  proc
+    282
+    283	01C8  B5 1F				     mov ch, 00011111b
+    284	01CA  BB 0001				     mov bx, 1
+    285
+Turbo Assembler	 Version 4.1	    02/10/24 20:25:35	    Page 6
+prog.asm
+
+
+
+    286	01CD  81 FB 1040	     MCBAwhile:	     cmp bx, ScreenHeight * ScreenWidth	* 2
+    287	01D1  77 07				     ja	MCBAwhileEnd
+    288
+    289	01D3  26: 88 2F				     mov byte ptr es:[bx], ch
+    290	01D6  43				     inc bx
+    291	01D7  43				     inc bx
+    292
+    293	01D8  EB F3				     jmp MCBAwhile
+    294	01DA			     MCBAwhileEnd:
+    295
+    296	01DA  C3				     ret
+    297	01DB					     endp
+    298				     ;--------------------------------------
+    299
+    300				     ;======================================
+    301	01DB			     main:
+    302	01DB  BB B800				     mov bx, 0b800h
+    303	01DE  8E C3				     mov es, bx	; videomem seg
+    304
+    305	01E0  E8 FFE5				     call MakeConsoleBrightAgain
+    306
+    307	01E3  E8 FF4C				     call DrawFrame
+    308	01E6  E8 FFBE				     call DrawShadow
+    309
+    310						     EOP
+1   311	01E9  B8 4C00				     mov ax, 4c00h
+1   312	01EC  CD 21				     int 21h
+    313
+    314				     end	     Start
+Turbo Assembler	 Version 4.1	    02/10/24 20:25:35	    Page 7
 Symbol Table
 
 
@@ -189,7 +352,7 @@ Symbol Name			  Type	 Value
 
 ??DATE				  Text	 "02/10/24"
 ??FILENAME			  Text	 "prog	  "
-??TIME				  Text	 "02:02:21"
+??TIME				  Text	 "20:25:35"
 ??VERSION			  Number 040A
 @32BIT				  Text	 0
 @CODE				  Text	 DGROUP
@@ -203,30 +366,48 @@ Symbol Name			  Type	 Value
 @MODEL				  Text	 1
 @STACK				  Text	 DGROUP
 @WORDSIZE			  Text	 2
-BLCORNER			  Number 0033
-BRCORNER			  Number 0034
-DFLWHILE			  Near	 DGROUP:014D
-DFLWHILEEND			  Near	 DGROUP:0159
-DFWHILE				  Near	 DGROUP:0127
-DFWHILEEND			  Near	 DGROUP:0139
-DRAWFRAME			  Near	 DGROUP:011A
-DRAWFRAMELINE			  Near	 DGROUP:0143
+BLCORNER			  Number 00C8
+BRCORNER			  Number 00BC
+DFLEWHILE			  Near	 DGROUP:016B
+DFLEWHILEEND			  Near	 DGROUP:0177
+DFLWHILE			  Near	 DGROUP:018D
+DFLWHILEEND			  Near	 DGROUP:0199
+DFWHILE				  Near	 DGROUP:0146
+DFWHILEEND			  Near	 DGROUP:0158
+DRAWFRAME			  Near	 DGROUP:0132
+DRAWFRAMEEMPTYLINE		  Near	 DGROUP:0169
+DRAWFRAMELINE			  Near	 DGROUP:0178
+DRAWSHADOW			  Near	 DGROUP:01A7
 DRAWSYMBOL			  Near	 DGROUP:0103
+DSHORWHILE			  Near	 DGROUP:01BB
+DSHORWHILEEND			  Near	 DGROUP:01C7
+DSVERTWHILE			  Near	 DGROUP:01AD
+DSVERTWHILEEND			  Near	 DGROUP:01B9
 FRAMEBEGCOL			  Number 0014
 FRAMEBEGLINE			  Number 0005
 FRAMECOLORATTR			  Number 004E
 FRAMEHEIGHT			  Number 000A
 FRAMEWIDTH			  Number 0028
-HLINE				  Number 0036
-MAIN				  Near	 DGROUP:0160
-MIDSYMNUM			  Number 0026
-SCREEMHEIGHT			  Number 001A
+HLINE				  Number 00CD
+MAIN				  Near	 DGROUP:01DB
+MAKECONSOLEBRIGHTAGAIN		  Near	 DGROUP:01C8
+MCBAWHILE			  Near	 DGROUP:01CD
+MCBAWHILEEND			  Near	 DGROUP:01DA
+MIDSYMNUMBER			  Number 0024
+MODSYMBOLATTR			  Near	 DGROUP:011A
+SCREENHEIGHT			  Number 001A
 SCREENWIDTH			  Number 0050
+SHADOWATTRMASK			  Number 0087
 SPACE				  Number 0020
 START				  Near	 DGROUP:0100
-TLCORNER			  Number 0031
-TRCORNER			  Number 0032
-VLINE				  Number 0035
+TLCORNER			  Number 00C9
+TRCORNER			  Number 00BB
+VLINE				  Number 00BA
+Turbo Assembler	 Version 4.1	    02/10/24 20:25:35	    Page 8
+Symbol Table
+
+
+
 
 Macro Name
 
@@ -236,5 +417,5 @@ Groups & Segments		  Bit Size Align  Combine Class
 
 DGROUP				  Group
   _DATA				  16  0000 Word	  Public  DATA
-  _TEXT				  16  016D Word	  Public  CODE
+  _TEXT				  16  01EE Word	  Public  CODE
 
