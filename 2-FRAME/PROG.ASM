@@ -43,7 +43,7 @@ DrawSymbol	proc
 		mov bl, ScreenWidth
 		mul bl	   ; ax = dh * ScreenWidth
 
-		mov dh, 0
+		xor dh, dh
 		add ax, dx ; ax += dl (col num)
 
 		mov bx, 2
@@ -73,7 +73,7 @@ ModSymbolAttr	proc
 		mov bl, ScreenWidth
 		mul bl	   ; ax = dh * ScreenWidth
 
-		mov dh, 0
+		xor dh, dh
 		add ax, dx ; ax += dl (col num)
 
 		mov bx, 2
@@ -248,12 +248,16 @@ DSvertWhile:	cmp dh, FrameBegLine + FrameHeight
 		ja DSvertWhileEnd
 
 		call ModSymbolAttr
+		inc dl
+		call ModSymbolAttr
+		dec dl
+
 		inc dh
 		jmp DSvertWhile
 DSvertWhileEnd:
 		dec dh
 
-DShorWhile:	cmp dl, FrameBegCol + 1
+DShorWhile:	cmp dl, FrameBegCol + 2 ; 2 symbols margin
 		jb DShorWhileEnd
 
 		call ModSymbolAttr

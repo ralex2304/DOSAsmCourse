@@ -1,4 +1,4 @@
-Turbo Assembler	 Version 4.1	    02/10/24 20:25:35	    Page 1
+Turbo Assembler	 Version 4.1	    02/10/24 21:48:08	    Page 1
 prog.asm
 
 
@@ -16,7 +16,7 @@ prog.asm
 1    11					     endm		     ; end of program
 1    12
      13
-     14	0100  E9 00D8		     Start:	     jmp main
+     14	0100  E9 00DF		     Start:	     jmp main
      15
      16	      =0050		     ScreenWidth     equ 80
      17	      =001A		     ScreenHeight    equ 26
@@ -54,13 +54,13 @@ prog.asm
      49	0106  B3 50				     mov bl, ScreenWidth
      50	0108  F6 E3				     mul bl	; ax = dh * ScreenWidth
      51
-     52	010A  B6 00				     mov dh, 0
+     52	010A  32 F6				     xor dh, dh
      53	010C  03 C2				     add ax, dx	; ax +=	dl (col	num)
      54
      55	010E  BB 0002				     mov bx, 2
      56	0111  F7 E3				     mul bx	; (dx, ax) = ax	* 2
      57
-Turbo Assembler	 Version 4.1	    02/10/24 20:25:35	    Page 2
+Turbo Assembler	 Version 4.1	    02/10/24 21:48:08	    Page 2
 prog.asm
 
 
@@ -89,7 +89,7 @@ prog.asm
      79	011D  B3 50				     mov bl, ScreenWidth
      80	011F  F6 E3				     mul bl	; ax = dh * ScreenWidth
      81
-     82	0121  B6 00				     mov dh, 0
+     82	0121  32 F6				     xor dh, dh
      83	0123  03 C2				     add ax, dx	; ax +=	dl (col	num)
      84
      85	0125  BB 0002				     mov bx, 2
@@ -122,7 +122,7 @@ prog.asm
     112	0136  B1 20				     mov cl, Space
     113	0138  E8 002E				     call DrawFrameEmptyLine
     114	013B  FE C6				     inc dh
-Turbo Assembler	 Version 4.1	    02/10/24 20:25:35	    Page 3
+Turbo Assembler	 Version 4.1	    02/10/24 21:48:08	    Page 3
 prog.asm
 
 
@@ -184,7 +184,7 @@ prog.asm
     169
     170	0173  FE C2				     inc dl
     171	0175  EB F4				     jmp DFLEwhile
-Turbo Assembler	 Version 4.1	    02/10/24 20:25:35	    Page 4
+Turbo Assembler	 Version 4.1	    02/10/24 21:48:08	    Page 4
 prog.asm
 
 
@@ -246,7 +246,7 @@ prog.asm
     226	019A  8A CB				     mov cl, bl
     227	019C  E8 FF64				     call DrawSymbol
     228
-Turbo Assembler	 Version 4.1	    02/10/24 20:25:35	    Page 5
+Turbo Assembler	 Version 4.1	    02/10/24 21:48:08	    Page 5
 prog.asm
 
 
@@ -276,73 +276,77 @@ prog.asm
     251	01AB  B2 3C				     mov dl, FrameBegCol + FrameWidth
     252
     253	01AD  80 FE 0F		     DSvertWhile:    cmp dh, FrameBegLine + FrameHeight
-    254	01B0  77 07				     ja	DSvertWhileEnd
+    254	01B0  77 0E				     ja	DSvertWhileEnd
     255
     256	01B2  E8 FF65				     call ModSymbolAttr
-    257	01B5  FE C6				     inc dh
-    258	01B7  EB F4				     jmp DSvertWhile
-    259	01B9			     DSvertWhileEnd:
-    260	01B9  FE CE				     dec dh
-    261
-    262	01BB  80 FA 15		     DShorWhile:     cmp dl, FrameBegCol + 1
-    263	01BE  72 07				     jb	DShorWhileEnd
-    264
-    265	01C0  E8 FF57				     call ModSymbolAttr
-    266	01C3  FE CA				     dec dl
-    267	01C5  EB F4				     jmp DShorWhile
-    268	01C7			     DShorWhileEnd:
-    269
-    270	01C7  C3				     ret
-    271	01C8					     endp
-    272				     ;--------------------------------------
+    257	01B5  FE C2				     inc dl
+    258	01B7  E8 FF60				     call ModSymbolAttr
+    259	01BA  FE CA				     dec dl
+    260
+    261	01BC  FE C6				     inc dh
+    262	01BE  EB ED				     jmp DSvertWhile
+    263	01C0			     DSvertWhileEnd:
+    264	01C0  FE CE				     dec dh
+    265
+    266	01C2  80 FA 16		     DShorWhile:     cmp dl, FrameBegCol + 2 ; 2 symbols margin
+    267	01C5  72 07				     jb	DShorWhileEnd
+    268
+    269	01C7  E8 FF50				     call ModSymbolAttr
+    270	01CA  FE CA				     dec dl
+    271	01CC  EB F4				     jmp DShorWhile
+    272	01CE			     DShorWhileEnd:
     273
-    274				     ;--------------------------------------
-    275				     ; Paints console in blue
-    276				     ;
-    277				     ; Entry:
-    278				     ; Assumes:	     es	= 0b800h
-    279				     ; Destr:	     ch, bx
-    280				     ;--------------------------------------
-    281	01C8			     MakeConsoleBrightAgain  proc
-    282
-    283	01C8  B5 1F				     mov ch, 00011111b
-    284	01CA  BB 0001				     mov bx, 1
-    285
-Turbo Assembler	 Version 4.1	    02/10/24 20:25:35	    Page 6
+    274	01CE  C3				     ret
+    275	01CF					     endp
+    276				     ;--------------------------------------
+    277
+    278				     ;--------------------------------------
+    279				     ; Paints console in blue
+    280				     ;
+    281				     ; Entry:
+    282				     ; Assumes:	     es	= 0b800h
+    283				     ; Destr:	     ch, bx
+    284				     ;--------------------------------------
+    285	01CF			     MakeConsoleBrightAgain  proc
+Turbo Assembler	 Version 4.1	    02/10/24 21:48:08	    Page 6
 prog.asm
 
 
 
-    286	01CD  81 FB 1040	     MCBAwhile:	     cmp bx, ScreenHeight * ScreenWidth	* 2
-    287	01D1  77 07				     ja	MCBAwhileEnd
-    288
-    289	01D3  26: 88 2F				     mov byte ptr es:[bx], ch
-    290	01D6  43				     inc bx
-    291	01D7  43				     inc bx
+    286
+    287	01CF  B5 1F				     mov ch, 00011111b
+    288	01D1  BB 0001				     mov bx, 1
+    289
+    290	01D4  81 FB 1040	     MCBAwhile:	     cmp bx, ScreenHeight * ScreenWidth	* 2
+    291	01D8  77 07				     ja	MCBAwhileEnd
     292
-    293	01D8  EB F3				     jmp MCBAwhile
-    294	01DA			     MCBAwhileEnd:
-    295
-    296	01DA  C3				     ret
-    297	01DB					     endp
-    298				     ;--------------------------------------
+    293	01DA  26: 88 2F				     mov byte ptr es:[bx], ch
+    294	01DD  43				     inc bx
+    295	01DE  43				     inc bx
+    296
+    297	01DF  EB F3				     jmp MCBAwhile
+    298	01E1			     MCBAwhileEnd:
     299
-    300				     ;======================================
-    301	01DB			     main:
-    302	01DB  BB B800				     mov bx, 0b800h
-    303	01DE  8E C3				     mov es, bx	; videomem seg
-    304
-    305	01E0  E8 FFE5				     call MakeConsoleBrightAgain
-    306
-    307	01E3  E8 FF4C				     call DrawFrame
-    308	01E6  E8 FFBE				     call DrawShadow
-    309
-    310						     EOP
-1   311	01E9  B8 4C00				     mov ax, 4c00h
-1   312	01EC  CD 21				     int 21h
+    300	01E1  C3				     ret
+    301	01E2					     endp
+    302				     ;--------------------------------------
+    303
+    304				     ;======================================
+    305	01E2			     main:
+    306	01E2  BB B800				     mov bx, 0b800h
+    307	01E5  8E C3				     mov es, bx	; videomem seg
+    308
+    309	01E7  E8 FFE5				     call MakeConsoleBrightAgain
+    310
+    311	01EA  E8 FF45				     call DrawFrame
+    312	01ED  E8 FFB7				     call DrawShadow
     313
-    314				     end	     Start
-Turbo Assembler	 Version 4.1	    02/10/24 20:25:35	    Page 7
+    314						     EOP
+1   315	01F0  B8 4C00				     mov ax, 4c00h
+1   316	01F3  CD 21				     int 21h
+    317
+    318				     end	     Start
+Turbo Assembler	 Version 4.1	    02/10/24 21:48:08	    Page 7
 Symbol Table
 
 
@@ -352,7 +356,7 @@ Symbol Name			  Type	 Value
 
 ??DATE				  Text	 "02/10/24"
 ??FILENAME			  Text	 "prog	  "
-??TIME				  Text	 "20:25:35"
+??TIME				  Text	 "21:48:07"
 ??VERSION			  Number 040A
 @32BIT				  Text	 0
 @CODE				  Text	 DGROUP
@@ -379,20 +383,20 @@ DRAWFRAMEEMPTYLINE		  Near	 DGROUP:0169
 DRAWFRAMELINE			  Near	 DGROUP:0178
 DRAWSHADOW			  Near	 DGROUP:01A7
 DRAWSYMBOL			  Near	 DGROUP:0103
-DSHORWHILE			  Near	 DGROUP:01BB
-DSHORWHILEEND			  Near	 DGROUP:01C7
+DSHORWHILE			  Near	 DGROUP:01C2
+DSHORWHILEEND			  Near	 DGROUP:01CE
 DSVERTWHILE			  Near	 DGROUP:01AD
-DSVERTWHILEEND			  Near	 DGROUP:01B9
+DSVERTWHILEEND			  Near	 DGROUP:01C0
 FRAMEBEGCOL			  Number 0014
 FRAMEBEGLINE			  Number 0005
 FRAMECOLORATTR			  Number 004E
 FRAMEHEIGHT			  Number 000A
 FRAMEWIDTH			  Number 0028
 HLINE				  Number 00CD
-MAIN				  Near	 DGROUP:01DB
-MAKECONSOLEBRIGHTAGAIN		  Near	 DGROUP:01C8
-MCBAWHILE			  Near	 DGROUP:01CD
-MCBAWHILEEND			  Near	 DGROUP:01DA
+MAIN				  Near	 DGROUP:01E2
+MAKECONSOLEBRIGHTAGAIN		  Near	 DGROUP:01CF
+MCBAWHILE			  Near	 DGROUP:01D4
+MCBAWHILEEND			  Near	 DGROUP:01E1
 MIDSYMNUMBER			  Number 0024
 MODSYMBOLATTR			  Near	 DGROUP:011A
 SCREENHEIGHT			  Number 001A
@@ -403,7 +407,7 @@ START				  Near	 DGROUP:0100
 TLCORNER			  Number 00C9
 TRCORNER			  Number 00BB
 VLINE				  Number 00BA
-Turbo Assembler	 Version 4.1	    02/10/24 20:25:35	    Page 8
+Turbo Assembler	 Version 4.1	    02/10/24 21:48:08	    Page 8
 Symbol Table
 
 
@@ -417,5 +421,5 @@ Groups & Segments		  Bit Size Align  Combine Class
 
 DGROUP				  Group
   _DATA				  16  0000 Word	  Public  DATA
-  _TEXT				  16  01EE Word	  Public  CODE
+  _TEXT				  16  01F5 Word	  Public  CODE
 
