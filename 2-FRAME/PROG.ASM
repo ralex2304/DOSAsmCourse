@@ -46,8 +46,7 @@ DrawSymbol	proc
 		xor dh, dh
 		add ax, dx ; ax += dl (col num)
 
-		mov bx, 2
-		mul bx     ; (dx, ax) = ax * 2
+		shl ax, 1 ; ax *= 2
 
 		mov bx, ax
 		mov word ptr es:[bx], cx
@@ -76,8 +75,7 @@ ModSymbolAttr	proc
 		xor dh, dh
 		add ax, dx ; ax += dl (col num)
 
-		mov bx, 2
-		mul bx     ; (dx, ax) = ax * 2
+		shl ax, 1 ; ax *= 2
 
 		mov bx, ax
 		inc bx ; attr address
@@ -285,8 +283,7 @@ MCBAwhile:	cmp bx, ScreenHeight * ScreenWidth * 2
 		ja MCBAwhileEnd
 
 		mov byte ptr es:[bx], ch
-		inc bx
-		inc bx
+		add bx, 2
 
 		jmp MCBAwhile
 MCBAwhileEnd:
