@@ -1,0 +1,338 @@
+Turbo Assembler	 Version 4.1	    02/14/24 23:28:12	    Page 1
+prog.asm
+
+
+
+      1	0000			     .model tiny
+      2				     .286
+      3	0000			     .code
+      4				     org 100h
+      5				     locals @@
+      6
+      7				     include ..\macros.asm
+1     8
+1     9				     EOP     macro
+1    10						     mov ax, 4c00h
+1    11						     int 21h
+1    12					     endm		     ; end of program
+1    13
+     14
+     15	0100  E9 00CC		     Start:	     jmp main
+     16
+     17	0103  31 32 33 34 35 36	37+  StringSrc	db "1234567890"
+     18	      38 39 30
+     19	010D  61 62 63 64 65 66	67+  StringDest	db "abcdefghji"
+     20	      68 6A 69
+     21
+     22				     ;--------------------------------------
+     23				     ; Counts string length
+     24				     ;
+     25				     ; word cdecl mystrlen(const byte* s)
+     26				     ;	     return ax;
+     27				     ;
+     28				     ; Assumes:
+     29				     ;
+     30				     ; Destr: ax, cx, es
+     31				     ;--------------------------------------
+     32
+     33	0117			     mystrlen	     proc
+     34
+     35	0117  55				     push bp
+     36	0118  8B EC				     mov bp, sp
+     37
+     38	011A  8C D8				     mov ax, ds
+     39	011C  8E C0				     mov es, ax	      ;	es = ds
+     40	011E  8B 7E 04				     mov di, [bp + 4] ;	di = offset s
+     41
+     42	0121  B9 FFFF				     mov cx, -1
+     43	0124  B0 24				     mov al, '$'
+     44	0126  F2> AE				     repne scasb
+     45
+     46	0128  F7 D9				     neg cx
+     47	012A  83 E9 02				     sub cx, 2
+     48	012D  8B C1				     mov ax, cx
+     49
+     50	012F  5D				     pop bp
+     51	0130  C3				     ret
+     52	0131					     endp
+     53				     ;--------------------------------------
+     54
+     55				     ;--------------------------------------
+     56				     ; Finds byte
+     57				     ;
+Turbo Assembler	 Version 4.1	    02/14/24 23:28:12	    Page 2
+prog.asm
+
+
+
+     58				     ; byte* cdecl mymemchr(const byte*	s, byte	c, word	n)
+     59				     ;	     return es:ax;
+     60				     ;
+     61				     ; Assumes:
+     62				     ;
+     63				     ; Destr: ax, cx, es
+     64				     ;--------------------------------------
+     65
+     66	0131			     mymemchr	     proc
+     67
+     68	0131  55				     push bp
+     69	0132  8B EC				     mov bp, sp
+     70
+     71	0134  8C D8				     mov ax, ds
+     72	0136  8E C0				     mov es, ax	      ;	es = ds
+     73
+     74
+     75	0138  8B 7E 04				     mov di, [bp + 4] ;	di = offset s
+     76
+     77
+     78	013B  8A 46 06				     mov al, [bp + 6] ;	al = c
+     79	013E  8B 4E 08				     mov cx, [bp + 8]
+     80	0141  41				     inc cx	      ;	cx = n + 1
+     81	0142  F2> AE				     repne scasb
+     82
+     83	0144  83 F9 00				     cmp cx, 0
+     84	0147  75 06				     jne @@IsFound
+     85	0149  B8 0000				     mov ax, 0
+     86	014C  EB 04 90				     jmp @@IsNotFound
+     87	014F			     @@IsFound:
+     88	014F  8D 45 FF				     lea ax, [di - 1]
+     89	0152			     @@IsNotFound:
+     90
+     91	0152  5D				     pop bp
+     92	0153  C3				     ret
+     93	0154					     endp
+     94				     ;--------------------------------------
+     95
+     96				     ;--------------------------------------
+     97				     ; Sets n bytes of memory with c
+     98				     ;
+     99				     ; byte* cdecl mymemset(const byte*	p, byte	c, word	n)
+    100				     ;	     return p;
+    101				     ;
+    102				     ; Assumes:
+    103				     ;
+    104				     ; Destr: ax, cx, es
+    105				     ;--------------------------------------
+    106
+    107	0154			     mymemset	     proc
+    108
+    109	0154  55				     push bp
+    110	0155  8B EC				     mov bp, sp
+    111
+    112	0157  8C D8				     mov ax, ds
+    113	0159  8E C0				     mov es, ax	      ;	es = ds
+    114
+Turbo Assembler	 Version 4.1	    02/14/24 23:28:12	    Page 3
+prog.asm
+
+
+
+    115	015B  8B 7E 04				     mov di, [bp + 4] ;	di = offset s
+    116
+    117	015E  8A 46 06				     mov al, [bp + 6] ;	al = c
+    118	0161  8B 4E 08				     mov cx, [bp + 8] ;	cx = n
+    119	0164  F3> AA				     rep stosb
+    120
+    121	0166  8B 46 04				     mov ax, [bp + 4]
+    122
+    123	0169  5D				     pop bp
+    124	016A  C3				     ret
+    125	016B					     endp
+    126				     ;--------------------------------------
+    127
+    128				     ;--------------------------------------
+    129				     ; Copies n	bytes of src to	dest
+    130				     ;
+    131				     ; byte* cdecl mymemcpy(byte* dest,	const byte* src, word n)
+    132				     ;	     return dest;
+    133				     ;
+    134				     ; Assumes:
+    135				     ;
+    136				     ; Destr: ax, cx, es, si
+    137				     ;--------------------------------------
+    138
+    139	016B			     mymemcpy	     proc
+    140
+    141	016B  55				     push bp
+    142	016C  8B EC				     mov bp, sp
+    143
+    144	016E  8C D8				     mov ax, ds
+    145	0170  8E C0				     mov es, ax	      ;	es = ds
+    146
+    147	0172  8B 7E 04				     mov di, [bp + 4] ;	di = offset dest
+    148
+    149	0175  8B 76 06				     mov si, [bp + 6] ;	si = offset src
+    150	0178  8B 4E 08				     mov cx, [bp + 8] ;	cx = n
+    151	017B  F3> A4				     rep movsb
+    152
+    153	017D  8B 46 04				     mov ax, [bp + 4]
+    154
+    155	0180  5D				     pop bp
+    156	0181  C3				     ret
+    157	0182					     endp
+    158				     ;--------------------------------------
+    159
+    160				     ;--------------------------------------
+    161				     ; Copies n	bytes of src to	dest. Also handles overlay
+    162				     ;
+    163				     ; byte* cdecl mymemmove(byte* dest, const byte* src, word n)
+    164				     ;	     return dest;
+    165				     ;
+    166				     ; Assumes:
+    167				     ;
+    168				     ; Destr: ax, cx, es, si
+    169				     ;--------------------------------------
+    170
+    171	0182			     mymemmove	     proc
+Turbo Assembler	 Version 4.1	    02/14/24 23:28:12	    Page 4
+prog.asm
+
+
+
+    172
+    173	0182  55				     push bp
+    174	0183  8B EC				     mov bp, sp
+    175
+    176	0185  8C D8				     mov ax, ds
+    177	0187  8E C0				     mov es, ax	      ;	es = ds
+    178
+    179	0189  8B 7E 04				     mov di, [bp + 4] ;	di = offset dest
+    180
+    181	018C  8B 76 06				     mov si, [bp + 6] ;	si = offset src
+    182	018F  8B 4E 08				     mov cx, [bp + 8] ;	cx = n
+    183
+    184						     ; if (src < dest && dest <	src + n)
+    185	0192  3B F7				     cmp si, di
+    186	0194  73 15				     jae @@else
+    187
+    188	0196  8B C6				     mov ax, si
+    189	0198  03 C1				     add ax, cx
+    190	019A  3B F8				     cmp di, ax
+    191	019C  73 0D				     jae @@else
+    192
+    193	019E  03 F9				     add di, cx	; di +=	n - 1
+    194	01A0  4F				     dec di
+    195	01A1  03 F1				     add si, cx	; si +=	n - 1
+    196	01A3  4E				     dec si
+    197	01A4  FD				     std
+    198	01A5  F3> A4				     rep movsb
+    199	01A7  FC				     cld
+    200	01A8  EB 03 90				     jmp @@endif
+    201
+    202	01AB  F3> A4		     @@else:	     rep movsb
+    203	01AD			     @@endif:
+    204
+    205	01AD  8B 46 04				     mov ax, [bp + 4]
+    206
+    207	01B0  5D				     pop bp
+    208	01B1  C3				     ret
+    209	01B2					     endp
+    210				     ;--------------------------------------
+    211
+    212				     ;--------------------------------------
+    213				     ; Compares	n bytes
+    214				     ;
+    215				     ; word cdecl mymemcmp(const byte* buf1, const byte* buf2, word n)
+    216				     ;	     return ax;
+    217				     ;
+    218				     ; Assumes:
+    219				     ;
+    220				     ; Destr: ax, cx, es
+    221				     ;--------------------------------------
+    222
+    223	01B2			     mymemcmp	     proc
+    224
+    225	01B2  55				     push bp
+    226	01B3  8B EC				     mov bp, sp
+    227
+    228	01B5  8C D8				     mov ax, ds
+Turbo Assembler	 Version 4.1	    02/14/24 23:28:12	    Page 5
+prog.asm
+
+
+
+    229	01B7  8E C0				     mov es, ax	      ;	es = ds
+    230	01B9  8B 7E 04				     mov di, [bp + 4] ;	di = offset buf1
+    231	01BC  8B 76 06				     mov si, [bp + 6] ;	si = offset buf2
+    232	01BF  8B 4E 08				     mov cx, [bp + 8] ;	cx = n
+    233
+    234	01C2  F3> A6				     repe CMPSB
+    235
+    236	01C4  32 C0				     xor al, al
+    237	01C6  26: 8A 65	FF			     mov ah, es:[di - 1]
+    238	01CA  2A 64 FF				     sub ah, ds:[si - 1]
+    239
+    240	01CD  5D				     pop bp
+    241	01CE  C3				     ret
+    242	01CF					     endp
+    243				     ;--------------------------------------
+    244
+    245				     ;======================================
+    246	01CF			     main:
+    247	01CF  FC				     cld
+    248
+    249	01D0  6A 04				     push 4
+    250	01D2  68 01E8r				     push offset String2
+    251	01D5  68 01E3r				     push offset String1
+    252	01D8  E8 FFD7				     call mymemcmp
+    253	01DB  83 C4 06				     add sp, 6
+    254
+    255						     EOP
+1   256	01DE  B8 4C00				     mov ax, 4c00h
+1   257	01E1  CD 21				     int 21h
+    258
+    259	01E3  61 62 63 64 65	     String1 db	"abcde"
+    260	01E8  61 62 63 65 65	     String2 db	"abcee"
+    261
+    262				     end	     Start
+Turbo Assembler	 Version 4.1	    02/14/24 23:28:12	    Page 6
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "02/14/24"
+??FILENAME			  Text	 "prog	  "
+??TIME				  Text	 "23:28:12"
+??VERSION			  Number 040A
+@32BIT				  Text	 0
+@@ELSE				  Near	 DGROUP:01AB
+@@ENDIF				  Near	 DGROUP:01AD
+@@ISFOUND			  Near	 DGROUP:014F
+@@ISNOTFOUND			  Near	 DGROUP:0152
+@CODE				  Text	 DGROUP
+@CODESIZE			  Text	 0
+@CPU				  Text	 0707H
+@CURSEG				  Text	 _TEXT
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@FILENAME			  Text	 PROG
+@INTERFACE			  Text	 000H
+@MODEL				  Text	 1
+@STACK				  Text	 DGROUP
+@WORDSIZE			  Text	 2
+MAIN				  Near	 DGROUP:01CF
+MYMEMCHR			  Near	 DGROUP:0131
+MYMEMCMP			  Near	 DGROUP:01B2
+MYMEMCPY			  Near	 DGROUP:016B
+MYMEMMOVE			  Near	 DGROUP:0182
+MYMEMSET			  Near	 DGROUP:0154
+MYSTRLEN			  Near	 DGROUP:0117
+START				  Near	 DGROUP:0100
+STRING1				  Byte	 DGROUP:01E3
+STRING2				  Byte	 DGROUP:01E8
+STRINGDEST			  Byte	 DGROUP:010D
+STRINGSRC			  Byte	 DGROUP:0103
+
+Macro Name
+
+EOP
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  _DATA				  16  0000 Word	  Public  DATA
+  _TEXT				  16  01ED Word	  Public  CODE
+

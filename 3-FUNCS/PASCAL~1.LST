@@ -1,0 +1,217 @@
+Turbo Assembler	 Version 4.1	    02/14/24 23:33:52	    Page 1
+pascal~1.asm
+
+
+
+      1	0000			     .model tiny
+      2				     .286
+      3	0000			     .code
+      4				     org 100h
+      5				     locals @@
+      6
+      7				     include ..\macros.asm
+1     8
+1     9				     EOP     macro
+1    10						     mov ax, 4c00h
+1    11						     int 21h
+1    12					     endm		     ; end of program
+1    13
+     14
+     15	0100  EB 7F 90		     Start:	     jmp main
+     16
+     17	0103  31 32 33 34 35 36	37+  StringSrc	db "1234567890"
+     18	      38 39 30
+     19	010D  61 62 63 64 65 66	67+  StringDest	db "abcdefghji"
+     20	      68 6A 69
+     21
+     22				     ;--------------------------------------
+     23				     ; Copies n	bytes of src to	dest
+     24				     ;
+     25				     ; byte* pascal mymemcpypascal(byte* dest, const byte* src,	word n)
+     26				     ;	     return dest;
+     27				     ;
+     28				     ; Assumes:
+     29				     ;
+     30				     ; Destr: ax, cx, es, si
+     31				     ;--------------------------------------
+     32
+     33	0117			     mymemcpypascal  proc
+     34
+     35	0117  55				     push bp
+     36	0118  8B EC				     mov bp, sp
+     37
+     38	011A  8C D8				     mov ax, ds
+     39	011C  8E C0				     mov es, ax	      ;	es = ds
+     40
+     41	011E  8B 7E 08				     mov di, [bp + 8] ;	di = offset dest
+     42
+     43	0121  8B 76 06				     mov si, [bp + 6] ;	si = offset src
+     44	0124  8B 4E 04				     mov cx, [bp + 4] ;	cx = n
+     45	0127  F3> A4				     rep movsb
+     46
+     47	0129  8B 46 08				     mov ax, [bp + 8]
+     48
+     49	012C  5D				     pop bp
+     50	012D  C2 0006				     ret 6
+     51	0130					     endp
+     52				     ;--------------------------------------
+     53
+     54				     ;--------------------------------------
+     55				     ; Copies n	bytes of src to	dest. Also handles overlay
+     56				     ;
+     57				     ; byte* pascal mymemmovepascal(byte* dest,	const byte* src, word n)
+Turbo Assembler	 Version 4.1	    02/14/24 23:33:52	    Page 2
+pascal~1.asm
+
+
+
+     58				     ;	     return dest;
+     59				     ;
+     60				     ; Assumes:
+     61				     ;
+     62				     ; Destr: ax, cx, es, si
+     63				     ;--------------------------------------
+     64
+     65	0130			     mymemmovepascal proc
+     66
+     67	0130  55				     push bp
+     68	0131  8B EC				     mov bp, sp
+     69
+     70	0133  8C D8				     mov ax, ds
+     71	0135  8E C0				     mov es, ax	      ;	es = ds
+     72
+     73	0137  8B 7E 08				     mov di, [bp + 8] ;	di = offset dest
+     74
+     75	013A  8B 76 06				     mov si, [bp + 6] ;	si = offset src
+     76	013D  8B 4E 04				     mov cx, [bp + 4] ;	cx = n
+     77
+     78						     ; if (src < dest && dest <	src + n)
+     79	0140  3B F7				     cmp si, di
+     80	0142  73 15				     jae @@else
+     81
+     82	0144  8B C6				     mov ax, si
+     83	0146  03 C1				     add ax, cx
+     84	0148  3B F8				     cmp di, ax
+     85	014A  73 0D				     jae @@else
+     86
+     87	014C  03 F9				     add di, cx	; di +=	n - 1
+     88	014E  4F				     dec di
+     89	014F  03 F1				     add si, cx	; si +=	n - 1
+     90	0151  4E				     dec si
+     91	0152  FD				     std
+     92	0153  F3> A4				     rep movsb
+     93	0155  FC				     cld
+     94	0156  EB 03 90				     jmp @@endif
+     95
+     96	0159  F3> A4		     @@else:	     rep movsb
+     97	015B			     @@endif:
+     98
+     99	015B  8B 46 08				     mov ax, [bp + 8]
+    100
+    101	015E  5D				     pop bp
+    102	015F  C2 0006				     ret 6
+    103	0162					     endp
+    104				     ;--------------------------------------
+    105
+    106				     ;--------------------------------------
+    107				     ; Compares	n bytes
+    108				     ;
+    109				     ; word pascal mymemcmppascal(const	byte* buf1, const byte*	buf2, word n)
+    110				     ;	     return ax;
+    111				     ;
+    112				     ; Assumes:
+    113				     ;
+    114				     ; Destr: ax, cx, es
+Turbo Assembler	 Version 4.1	    02/14/24 23:33:52	    Page 3
+pascal~1.asm
+
+
+
+    115				     ;--------------------------------------
+    116
+    117	0162			     mymemcmppascal  proc
+    118
+    119	0162  55				     push bp
+    120	0163  8B EC				     mov bp, sp
+    121
+    122	0165  8C D8				     mov ax, ds
+    123	0167  8E C0				     mov es, ax	      ;	es = ds
+    124	0169  8B 7E 08				     mov di, [bp + 8] ;	di = offset buf1
+    125	016C  8B 76 06				     mov si, [bp + 6] ;	si = offset buf2
+    126	016F  8B 4E 04				     mov cx, [bp + 4] ;	cx = n
+    127
+    128	0172  F3> A6				     repe CMPSB
+    129
+    130	0174  32 C0				     xor al, al
+    131	0176  26: 8A 65	FF			     mov ah, es:[di - 1]
+    132	017A  2A 64 FF				     sub ah, ds:[si - 1]
+    133
+    134	017D  5D				     pop bp
+    135	017E  C2 0006				     ret 6
+    136	0181					     endp
+    137				     ;--------------------------------------
+    138
+    139				     ;======================================
+    140	0181			     main:
+    141	0181  FC				     cld
+    142
+    143
+    144	0182  68 0192r				     push offset String1
+    145	0185  68 0197r				     push offset String2
+    146	0188  6A 04				     push 4
+    147	018A  E8 FFD5				     call mymemcmppascal
+    148
+    149						     EOP
+1   150	018D  B8 4C00				     mov ax, 4c00h
+1   151	0190  CD 21				     int 21h
+    152
+    153	0192  61 62 63 64 65	     String1 db	"abcde"
+    154	0197  61 62 63 65 65	     String2 db	"abcee"
+    155
+    156				     end	     Start
+Turbo Assembler	 Version 4.1	    02/14/24 23:33:52	    Page 4
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "02/14/24"
+??FILENAME			  Text	 "pascal~1"
+??TIME				  Text	 "23:33:52"
+??VERSION			  Number 040A
+@32BIT				  Text	 0
+@@ELSE				  Near	 DGROUP:0159
+@@ENDIF				  Near	 DGROUP:015B
+@CODE				  Text	 DGROUP
+@CODESIZE			  Text	 0
+@CPU				  Text	 0707H
+@CURSEG				  Text	 _TEXT
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@FILENAME			  Text	 PASCAL~1
+@INTERFACE			  Text	 000H
+@MODEL				  Text	 1
+@STACK				  Text	 DGROUP
+@WORDSIZE			  Text	 2
+MAIN				  Near	 DGROUP:0181
+MYMEMCMPPASCAL			  Near	 DGROUP:0162
+MYMEMCPYPASCAL			  Near	 DGROUP:0117
+MYMEMMOVEPASCAL			  Near	 DGROUP:0130
+START				  Near	 DGROUP:0100
+STRING1				  Byte	 DGROUP:0192
+STRING2				  Byte	 DGROUP:0197
+STRINGDEST			  Byte	 DGROUP:010D
+STRINGSRC			  Byte	 DGROUP:0103
+
+Macro Name
+
+EOP
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  _DATA				  16  0000 Word	  Public  DATA
+  _TEXT				  16  019C Word	  Public  CODE
+
