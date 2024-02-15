@@ -423,6 +423,81 @@ GetDecimalNumber proc
 ;--------------------------------------
 
 ;--------------------------------------
+; Gets hex number into cl from argv
+; Entry:	bx = current symbol in argv
+; Assumes:
+; Effect:	bx - moves it to the symbol after number
+;		cl - returns number
+;
+; Destr:	ax, cl
+;--------------------------------------
+GetHexNumber proc
+
+		call SkipSpaces
+		cmp bx, -1
+		je @@GetHexEnd
+
+		mov al, [bx]
+		call ConvertHexDigit
+		mov cl, al
+		inc bx
+
+		cmp byte ptr [bx], Space
+		je @@GetHexEnd
+		cmp byte ptr [bx], NewLine
+		je @@GetHexEnd
+
+		call CheckArgc
+		cmp bx, -1
+		je @@GetHexEnd
+
+		shl cl, 4
+
+		mov al, [bx]
+		call ConvertHexDigit
+		add cl, al
+
+		inc bx
+@@GetHexEnd:
+		ret
+		endp
+;--------------------------------------
+
+;--------------------------------------
+; Converts hex digit in al
+; Entry:	al - symbol
+; Assumes:
+; Effect:	al - number
+;
+; Destr:
+;--------------------------------------
+ConvertHexDigit proc
+
+		; if ('0' <= al && al <= '9')
+		cmp al, '0'
+		jb @@CHDelseif
+		cmp al, '9'
+		ja @@CHDelseif
+
+		sub al, '0'
+		jmp @@CHDendif
+@@CHDelseif:
+		; else if ('a' <= al && al <= 'f')
+		cmp al, 'a'
+		jb @@CHDelse
+		cmp al, 'f'
+		ja @@CHDelse
+
+		sub al, 'a' - 10
+		jmp @@CHDendif
+@@CHDelse:
+		sub al, 'A' - 10
+@@CHDendif:
+		ret
+		endp
+;--------------------------------------
+
+;--------------------------------------
 ; Gets width and height from argv
 ; GetWidthHeight(word* width_height)
 ; Entry:	bx = current symbol in argv
@@ -457,10 +532,6 @@ GetWidthHeight	proc
 		ret
 		endp
 ;--------------------------------------
-
-
-
-
 
 ;--------------------------------------
 ; Gets frame style from argv
@@ -599,6 +670,36 @@ PrintText	proc
 		endp
 ;--------------------------------------
 
+
+;--------------------------------------
+; Gets hex color from argv
+; GetColor(byte* color)
+; Entry:	bx = current symbol in argv
+; Assumes:
+; Effect:	bx - moves it to next token
+; Destr:	ax
+;--------------------------------------
+GetColor	proc
+
+		push bp
+		mov bp, sp
+
+		call SkipSpaces
+		cmp bx, -1
+		je @@GetColorEnd
+
+		call GetHexNumber
+
+		push bx
+		mov bx, [bp + 4]
+		mov byte ptr [bx], cl
+		pop bx
+
+@@GetColorEnd:	pop bp
+		ret
+		endp
+;--------------------------------------
+
 ;======================================
 main:
 		cld
@@ -626,7 +727,12 @@ main:
 		cmp bx, -1
 		je @@ErrNotEnoughArgs
 
-		;;;;;;;
+		lea ax, [bp - 4]
+		push ax
+		call GetColor
+		add sp, 2
+		cmp bx, -1
+		je @@ErrNotEnoughArgs
 
 		lea ax, [bp - 6]
 		push ax
@@ -644,7 +750,7 @@ main:
 		cmp bx, -1
 		je @@ErrNotEnoughArgs
 
-		push FrameColorAttr ;[bp - 4]
+		push [bp - 4]
 		push [bp - 2]
 		push [bp - 6]
 		call DrawFrame
@@ -679,62 +785,3 @@ FrameColorAttr	equ 4eh ; 01001110b
 
 
 end		Start
-
-
-
-
-
-
-
-
-		lea ax, [bp - 4]
-		push ax
-		call GetColor
-		add sp, 2
-		cmp bx, -1
-		je @@ErrNotEnoughArgs
-
-
-
-;--------------------------------------
-; Gets hex color from argv
-; GetColor(byte* color)
-; Entry:	bx = current symbol in argv
-; Assumes:
-; Effect:	bx - moves it to next token
-; Destr:	ax
-;--------------------------------------
-GetColor	proc
-
-		push bp
-		mov bp, sp
-
-
-
-		push bx
-		mov bx, [bp + 4]
-		mov byte ptr [bx]
-		pop bx
-
-		call CheckArgc
-		cmp bx, -1
-		je @@FuncEnd
-
-		push bx
-		mov bx, [bp + 4]
-		mov byte ptr [bx], cl
-		pop bx
-
-		call GetDecimalNumber
-		cmp bx, -1
-		je @@FuncEnd
-
-		push bx
-		mov bx, [bp + 4]
-		mov byte ptr [bx + 1], cl
-		pop bx
-
-@@FuncEnd:	pop bp
-		ret
-		endp
-;--------------------------------------

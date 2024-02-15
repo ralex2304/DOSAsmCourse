@@ -1,4 +1,4 @@
-Turbo Assembler	 Version 4.1	    02/15/24 04:34:45	    Page 1
+Turbo Assembler	 Version 4.1	    02/15/24 19:46:08	    Page 1
 prog.asm
 
 
@@ -16,7 +16,7 @@ prog.asm
 1    11					     endm		     ; end of program
 1    12
      13
-     14	0100  E9 0221		     Start:	     jmp main
+     14	0100  E9 0283		     Start:	     jmp main
      15
      16	      =0050		     ScreenWidth     equ 80
      17	      =001A		     ScreenHeight    equ 26
@@ -60,7 +60,7 @@ prog.asm
      55	0117					     endp
      56				     ;--------------------------------------
      57
-Turbo Assembler	 Version 4.1	    02/15/24 04:34:45	    Page 2
+Turbo Assembler	 Version 4.1	    02/15/24 19:46:08	    Page 2
 prog.asm
 
 
@@ -122,7 +122,7 @@ prog.asm
     112	013F  C3				     ret
     113	0140					     endp
     114				     ;--------------------------------------
-Turbo Assembler	 Version 4.1	    02/15/24 04:34:45	    Page 3
+Turbo Assembler	 Version 4.1	    02/15/24 19:46:08	    Page 3
 prog.asm
 
 
@@ -184,7 +184,7 @@ prog.asm
     169	0186  83 C4 02				     add sp, 2
     170
     171	0189  5D				     pop bp
-Turbo Assembler	 Version 4.1	    02/15/24 04:34:45	    Page 4
+Turbo Assembler	 Version 4.1	    02/15/24 19:46:08	    Page 4
 prog.asm
 
 
@@ -246,7 +246,7 @@ prog.asm
     226
     227	01A4  55				     push bp
     228	01A5  8B EC				     mov bp, sp
-Turbo Assembler	 Version 4.1	    02/15/24 04:34:45	    Page 5
+Turbo Assembler	 Version 4.1	    02/15/24 19:46:08	    Page 5
 prog.asm
 
 
@@ -308,7 +308,7 @@ prog.asm
     283	01E0  55				     push bp
     284	01E1  8B EC				     mov bp, sp
     285
-Turbo Assembler	 Version 4.1	    02/15/24 04:34:45	    Page 6
+Turbo Assembler	 Version 4.1	    02/15/24 19:46:08	    Page 6
 prog.asm
 
 
@@ -370,7 +370,7 @@ prog.asm
     340	0226  C3				     ret
     341	0227					     endp
     342				     ;--------------------------------------
-Turbo Assembler	 Version 4.1	    02/15/24 04:34:45	    Page 7
+Turbo Assembler	 Version 4.1	    02/15/24 19:46:08	    Page 7
 prog.asm
 
 
@@ -432,7 +432,7 @@ prog.asm
     397				     ;--------------------------------------
     398	0244			     GetDecimalNumber proc
     399
-Turbo Assembler	 Version 4.1	    02/15/24 04:34:45	    Page 8
+Turbo Assembler	 Version 4.1	    02/15/24 19:46:08	    Page 8
 prog.asm
 
 
@@ -469,294 +469,410 @@ prog.asm
     429				     ;--------------------------------------
     430
     431				     ;--------------------------------------
-    432				     ; Gets width and height from argv
-    433				     ; GetWidthHeight(word* width_height)
-    434				     ; Entry:	     bx	= current symbol in argv
-    435				     ; Assumes:
-    436				     ; Effect:	     bx	- moves	it to next token
-    437				     ; Destr:	     ax, cl
-    438				     ;--------------------------------------
-    439	0272			     GetWidthHeight  proc
-    440
-    441	0272  55				     push bp
-    442	0273  8B EC				     mov bp, sp
-    443
-    444	0275  E8 FFCC				     call GetDecimalNumber
-    445	0278  83 FB FF				     cmp bx, -1
-    446	027B  74 17				     je	@@FuncEnd
-    447
-    448	027D  53				     push bx
-    449	027E  8B 5E 04				     mov bx, [bp + 4]
-    450	0281  88 0F				     mov byte ptr [bx],	cl
-    451	0283  5B				     pop bx
-    452
-    453	0284  E8 FFBD				     call GetDecimalNumber
-    454	0287  83 FB FF				     cmp bx, -1
-    455	028A  74 08				     je	@@FuncEnd
-    456
-Turbo Assembler	 Version 4.1	    02/15/24 04:34:45	    Page 9
+    432				     ; Gets hex	number into cl from argv
+    433				     ; Entry:	     bx	= current symbol in argv
+    434				     ; Assumes:
+    435				     ; Effect:	     bx	- moves	it to the symbol after number
+    436				     ;		     cl	- returns number
+    437				     ;
+    438				     ; Destr:	     ax, cl
+    439				     ;--------------------------------------
+    440	0272			     GetHexNumber proc
+    441
+    442	0272  E8 FFC0				     call SkipSpaces
+    443	0275  83 FB FF				     cmp bx, -1
+    444	0278  74 25				     je	@@GetHexEnd
+    445
+    446	027A  8A 07				     mov al, [bx]
+    447	027C  E8 0021				     call ConvertHexDigit
+    448	027F  8A C8				     mov cl, al
+    449	0281  43				     inc bx
+    450
+    451	0282  80 3F 20				     cmp byte ptr [bx],	Space
+    452	0285  74 18				     je	@@GetHexEnd
+    453	0287  80 3F 0D				     cmp byte ptr [bx],	NewLine
+    454	028A  74 13				     je	@@GetHexEnd
+    455
+    456	028C  E8 FF98				     call CheckArgc
+Turbo Assembler	 Version 4.1	    02/15/24 19:46:08	    Page 9
 prog.asm
 
 
 
-    457	028C  53				     push bx
-    458	028D  8B 5E 04				     mov bx, [bp + 4]
-    459	0290  88 4F 01				     mov byte ptr [bx +	1], cl
-    460	0293  5B				     pop bx
+    457	028F  83 FB FF				     cmp bx, -1
+    458	0292  74 0B				     je	@@GetHexEnd
+    459
+    460	0294  C0 E1 04				     shl cl, 4
     461
-    462	0294  5D		     @@FuncEnd:	     pop bp
-    463	0295  C3				     ret
-    464	0296					     endp
-    465				     ;--------------------------------------
-    466
-    467
-    468
-    469
-    470
-    471				     ;--------------------------------------
-    472				     ; Gets frame style	from argv
-    473				     ; GetStyle(char* style)
-    474				     ; Entry:	     bx	= current symbol in argv
+    462	0297  8A 07				     mov al, [bx]
+    463	0299  E8 0004				     call ConvertHexDigit
+    464	029C  02 C8				     add cl, al
+    465
+    466	029E  43				     inc bx
+    467	029F			     @@GetHexEnd:
+    468	029F  C3				     ret
+    469	02A0					     endp
+    470				     ;--------------------------------------
+    471
+    472				     ;--------------------------------------
+    473				     ; Converts	hex digit in al
+    474				     ; Entry:	     al	- symbol
     475				     ; Assumes:
-    476				     ; Effect:	     bx	- moves	it to next token
-    477				     ; Destr:	     ax, cx, dx
-    478				     ;--------------------------------------
-    479	0296			     GetStyle	     proc
-    480
-    481	0296  55				     push bp
-    482	0297  8B EC				     mov bp, sp
-    483
-    484	0299  E8 FF99				     call SkipSpaces
-    485	029C  83 FB FF				     cmp bx, -1
-    486	029F  74 2C				     je	@@GetStyleEnd
+    476				     ; Effect:	     al	- number
+    477				     ;
+    478				     ; Destr:
+    479				     ;--------------------------------------
+    480	02A0			     ConvertHexDigit proc
+    481
+    482						     ; if ('0' <= al &&	al <= '9')
+    483	02A0  3C 30				     cmp al, '0'
+    484	02A2  72 09				     jb	@@CHDelseif
+    485	02A4  3C 39				     cmp al, '9'
+    486	02A6  77 05				     ja	@@CHDelseif
     487
-    488	02A1  80 3F 2A				     cmp byte ptr [bx],	'*'
-    489	02A4  75 11				     jne @@DefinedStyle
-    490
-    491	02A6  43				     inc bx
-    492	02A7  E8 FF7D				     call CheckArgc
-    493	02AA  83 FB FF				     cmp bx, -1
-    494	02AD  74 1E				     je	@@GetStyleEnd
-    495
-    496	02AF  8B CB				     mov cx, bx
-    497	02B1  83 C3 09				     add bx, 9
-    498
-    499	02B4  EB 10 90				     jmp @@WriteStyle
-    500
-    501	02B7			     @@DefinedStyle:
-    502	02B7  B0 09				     mov al, 9
-    503	02B9  8A 27				     mov ah, [bx]
-    504	02BB  80 EC 30				     sub ah, '0'
-    505	02BE  F6 E4				     mul ah
-    506
-    507	02C0  43				     inc bx
-    508
-    509	02C1  B9 0399r				     mov cx, offset Styles
-    510	02C4  03 C8				     add cx, ax
-    511
-    512	02C6			     @@WriteStyle:
-    513	02C6  53				     push bx
-Turbo Assembler	 Version 4.1	    02/15/24 04:34:45	    Page 10
+    488	02A8  2C 30				     sub al, '0'
+    489	02AA  EB 10 90				     jmp @@CHDendif
+    490	02AD			     @@CHDelseif:
+    491						     ; else if ('a' <= al && al	<= 'f')
+    492	02AD  3C 61				     cmp al, 'a'
+    493	02AF  72 09				     jb	@@CHDelse
+    494	02B1  3C 66				     cmp al, 'f'
+    495	02B3  77 05				     ja	@@CHDelse
+    496
+    497	02B5  2C 57				     sub al, 'a' - 10
+    498	02B7  EB 03 90				     jmp @@CHDendif
+    499	02BA			     @@CHDelse:
+    500	02BA  2C 37				     sub al, 'A' - 10
+    501	02BC			     @@CHDendif:
+    502	02BC  C3				     ret
+    503	02BD					     endp
+    504				     ;--------------------------------------
+    505
+    506				     ;--------------------------------------
+    507				     ; Gets width and height from argv
+    508				     ; GetWidthHeight(word* width_height)
+    509				     ; Entry:	     bx	= current symbol in argv
+    510				     ; Assumes:
+    511				     ; Effect:	     bx	- moves	it to next token
+    512				     ; Destr:	     ax, cl
+    513				     ;--------------------------------------
+Turbo Assembler	 Version 4.1	    02/15/24 19:46:08	    Page 10
 prog.asm
 
 
 
-    514	02C7  8B 5E 04				     mov bx, [bp + 4]
-    515	02CA  89 0F				     mov word ptr [bx],	cx
-    516	02CC  5B				     pop bx
-    517
-    518	02CD  5D		     @@GetStyleEnd:  pop bp
-    519	02CE  C3				     ret
-    520	02CF					     endp
-    521				     ;--------------------------------------
+    514	02BD			     GetWidthHeight  proc
+    515
+    516	02BD  55				     push bp
+    517	02BE  8B EC				     mov bp, sp
+    518
+    519	02C0  E8 FF81				     call GetDecimalNumber
+    520	02C3  83 FB FF				     cmp bx, -1
+    521	02C6  74 17				     je	@@FuncEnd
     522
-    523				     ;--------------------------------------
-    524				     ; Gets text from argv
-    525				     ; GetText(byte* text, byte* text_len)
-    526				     ; Entry:	     bx	= current symbol in argv
-    527				     ; Assumes:
-    528				     ; Effect:
-    529				     ; Destr:	     ax, bx
-    530				     ;--------------------------------------
-    531	02CF			     GetText proc
-    532
-    533	02CF  55				     push bp
-    534	02D0  8B EC				     mov bp, sp
-    535
-    536	02D2  E8 FF60				     call SkipSpaces
-    537	02D5  83 FB FF				     cmp bx, -1
-    538	02D8  74 19				     je	@@GetTextEnd
-    539
-    540	02DA  53				     push bx
-    541	02DB  81 EB 0081			     sub bx, ArgvAddr
-    542	02DF  A0 0080				     mov al, ds:[ArgcAddr]
-    543	02E2  2A C3				     sub al, bl
-    544
-    545	02E4  8B 5E 06				     mov bx, [bp + 6]
-    546	02E7  32 E4				     xor ah, ah
-    547	02E9  89 07				     mov word ptr [bx],	ax
-    548
-    549	02EB  5B				     pop bx
-    550	02EC  8B C3				     mov ax, bx
-    551	02EE  8B 5E 04				     mov bx, [bp + 4]
-    552	02F1  89 07				     mov word ptr [bx],	ax
-    553
-    554	02F3  5D		     @@GetTextEnd:   pop bp
-    555	02F4  C3				     ret
-    556	02F5					     endp
-    557				     ;--------------------------------------
+    523	02C8  53				     push bx
+    524	02C9  8B 5E 04				     mov bx, [bp + 4]
+    525	02CC  88 0F				     mov byte ptr [bx],	cl
+    526	02CE  5B				     pop bx
+    527
+    528	02CF  E8 FF72				     call GetDecimalNumber
+    529	02D2  83 FB FF				     cmp bx, -1
+    530	02D5  74 08				     je	@@FuncEnd
+    531
+    532	02D7  53				     push bx
+    533	02D8  8B 5E 04				     mov bx, [bp + 4]
+    534	02DB  88 4F 01				     mov byte ptr [bx +	1], cl
+    535	02DE  5B				     pop bx
+    536
+    537	02DF  5D		     @@FuncEnd:	     pop bp
+    538	02E0  C3				     ret
+    539	02E1					     endp
+    540				     ;--------------------------------------
+    541
+    542				     ;--------------------------------------
+    543				     ; Gets frame style	from argv
+    544				     ; GetStyle(char* style)
+    545				     ; Entry:	     bx	= current symbol in argv
+    546				     ; Assumes:
+    547				     ; Effect:	     bx	- moves	it to next token
+    548				     ; Destr:	     ax, cx, dx
+    549				     ;--------------------------------------
+    550	02E1			     GetStyle	     proc
+    551
+    552	02E1  55				     push bp
+    553	02E2  8B EC				     mov bp, sp
+    554
+    555	02E4  E8 FF4E				     call SkipSpaces
+    556	02E7  83 FB FF				     cmp bx, -1
+    557	02EA  74 2C				     je	@@GetStyleEnd
     558
-    559				     ;--------------------------------------
-    560				     ; Prints text
-    561				     ; GetText(byte* text, word	width_height, byte text_len)
-    562				     ; Entry:
-    563				     ; Assumes:	     es	= 0b800h
-    564				     ; Effect:
-    565				     ; Destr:	     ax, bx, cx, dx
-    566				     ;--------------------------------------
-    567	02F5			     PrintText	     proc
-    568
-    569	02F5  55				     push bp
-    570	02F6  8B EC				     mov bp, sp
-Turbo Assembler	 Version 4.1	    02/15/24 04:34:45	    Page 11
+    559	02EC  80 3F 2A				     cmp byte ptr [bx],	'*'
+    560	02EF  75 11				     jne @@DefinedStyle
+    561
+    562	02F1  43				     inc bx
+    563	02F2  E8 FF32				     call CheckArgc
+    564	02F5  83 FB FF				     cmp bx, -1
+    565	02F8  74 1E				     je	@@GetStyleEnd
+    566
+    567	02FA  8B CB				     mov cx, bx
+    568	02FC  83 C3 09				     add bx, 9
+    569
+    570	02FF  EB 10 90				     jmp @@WriteStyle
+Turbo Assembler	 Version 4.1	    02/15/24 19:46:08	    Page 11
 prog.asm
 
 
 
     571
-    572						     ; dh - line num
-    573						     ; dl - col	num
-    574
-    575	02F8  8A 76 07				     mov dh, [bp + 7]
-    576	02FB  D0 EE				     shr dh, 1
-    577	02FD  80 C6 05				     add dh, FrameBegLine
-    578
-    579	0300  8A 6E 08				     mov ch, [bp + 8]
-    580	0303  8A 56 06				     mov dl, [bp + 6]
-    581	0306  2A D5				     sub dl, ch
-    582	0308  D0 EA				     shr dl, 1
-    583	030A  80 C2 14				     add dl, FrameBegCol
-    584
-    585	030D  8B 5E 04				     mov bx, [bp + 4]
-    586
-    587	0310  02 EA				     add ch, dl
+    572	0302			     @@DefinedStyle:
+    573	0302  B0 09				     mov al, 9
+    574	0304  8A 27				     mov ah, [bx]
+    575	0306  80 EC 30				     sub ah, '0'
+    576	0309  F6 E4				     mul ah
+    577
+    578	030B  43				     inc bx
+    579
+    580	030C  B9 0409r				     mov cx, offset Styles
+    581	030F  03 C8				     add cx, ax
+    582
+    583	0311			     @@WriteStyle:
+    584	0311  53				     push bx
+    585	0312  8B 5E 04				     mov bx, [bp + 4]
+    586	0315  89 0F				     mov word ptr [bx],	cx
+    587	0317  5B				     pop bx
     588
-    589	0312  3A D5		     @@printchar:    cmp dl, ch
-    590	0314  73 0C				     jae @@endprint
-    591
-    592	0316  53				     push bx
-    593	0317  8A 0F				     mov cl, [bx]
-    594	0319  E8 FDFB				     call ModSymbol
-    595	031C  5B				     pop bx
-    596
-    597	031D  FE C2				     inc dl
-    598	031F  43				     inc bx
-    599
-    600	0320  EB F0				     jmp @@printchar
-    601
-    602	0322			     @@endprint:
-    603	0322  5D				     pop bp
-    604	0323  C3				     ret
-    605	0324					     endp
-    606				     ;--------------------------------------
-    607
-    608				     ;======================================
-    609	0324			     main:
-    610	0324  FC				     cld
-    611	0325  8B EC				     mov bp, sp
-    612
-    613	0327  BB B800				     mov bx, 0b800h
-    614	032A  8E C3				     mov es, bx	; videomem seg
+    589	0318  5D		     @@GetStyleEnd:  pop bp
+    590	0319  C3				     ret
+    591	031A					     endp
+    592				     ;--------------------------------------
+    593
+    594				     ;--------------------------------------
+    595				     ; Gets text from argv
+    596				     ; GetText(byte* text, byte* text_len)
+    597				     ; Entry:	     bx	= current symbol in argv
+    598				     ; Assumes:
+    599				     ; Effect:
+    600				     ; Destr:	     ax, bx
+    601				     ;--------------------------------------
+    602	031A			     GetText proc
+    603
+    604	031A  55				     push bp
+    605	031B  8B EC				     mov bp, sp
+    606
+    607	031D  E8 FF15				     call SkipSpaces
+    608	0320  83 FB FF				     cmp bx, -1
+    609	0323  74 19				     je	@@GetTextEnd
+    610
+    611	0325  53				     push bx
+    612	0326  81 EB 0081			     sub bx, ArgvAddr
+    613	032A  A0 0080				     mov al, ds:[ArgcAddr]
+    614	032D  2A C3				     sub al, bl
     615
-    616	032C  E8 FEE4				     call MakeConsoleBrightAgain
-    617
-    618						     ; locals:
-    619						     ; [bp - 2]	 = width_height
-    620						     ; [bp - 4]	 = color
-    621						     ; [bp - 6]	 = style
-    622						     ; [bp - 8]	 = text
-    623						     ; [bp - 10] = text	len
-    624	032F  83 EC 0A				     sub sp, 10
-    625
-    626	0332  BB 0081				     mov bx, ArgvAddr
-    627
-Turbo Assembler	 Version 4.1	    02/15/24 04:34:45	    Page 12
+    616	032F  8B 5E 06				     mov bx, [bp + 6]
+    617	0332  32 E4				     xor ah, ah
+    618	0334  89 07				     mov word ptr [bx],	ax
+    619
+    620	0336  5B				     pop bx
+    621	0337  8B C3				     mov ax, bx
+    622	0339  8B 5E 04				     mov bx, [bp + 4]
+    623	033C  89 07				     mov word ptr [bx],	ax
+    624
+    625	033E  5D		     @@GetTextEnd:   pop bp
+    626	033F  C3				     ret
+    627	0340					     endp
+Turbo Assembler	 Version 4.1	    02/15/24 19:46:08	    Page 12
 prog.asm
 
 
 
-    628	0335  8D 46 FE				     lea ax, [bp - 2]
-    629	0338  50				     push ax
-    630	0339  E8 FF36				     call GetWidthHeight
-    631	033C  83 C4 02				     add sp, 2
-    632	033F  83 FB FF				     cmp bx, -1
-    633	0342  74 4D				     je	@@ErrNotEnoughArgs
-    634
-    635						     ;;;;;;;
-    636
-    637	0344  8D 46 FA				     lea ax, [bp - 6]
-    638	0347  50				     push ax
-    639	0348  E8 FF4B				     call GetStyle
-    640	034B  83 C4 02				     add sp, 2
-    641	034E  83 FB FF				     cmp bx, -1
-    642	0351  74 3E				     je	@@ErrNotEnoughArgs
-    643
-    644	0353  8D 46 F6				     lea ax, [bp - 10]
-    645	0356  50				     push ax
-    646	0357  8D 46 F8				     lea ax, [bp - 8]
-    647	035A  50				     push ax
-    648	035B  E8 FF71				     call GetText
-    649	035E  83 C4 04				     add sp, 4
-    650	0361  83 FB FF				     cmp bx, -1
-    651	0364  74 2B				     je	@@ErrNotEnoughArgs
-    652
-    653	0366  6A 4E 90 90			     push FrameColorAttr ;[bp -	4]
-    654	036A  FF 76 FE				     push [bp -	2]
-    655	036D  FF 76 FA				     push [bp -	6]
-    656	0370  E8 FDCD				     call DrawFrame
-    657	0373  83 C4 06				     add sp, 6
-    658
-    659	0376  FF 76 FE				     push [bp -	2]
-    660	0379  E8 FE64				     call DrawShadow
-    661	037C  83 C4 02				     add sp, 2
+    628				     ;--------------------------------------
+    629
+    630				     ;--------------------------------------
+    631				     ; Prints text
+    632				     ; GetText(byte* text, word	width_height, byte text_len)
+    633				     ; Entry:
+    634				     ; Assumes:	     es	= 0b800h
+    635				     ; Effect:
+    636				     ; Destr:	     ax, bx, cx, dx
+    637				     ;--------------------------------------
+    638	0340			     PrintText	     proc
+    639
+    640	0340  55				     push bp
+    641	0341  8B EC				     mov bp, sp
+    642
+    643						     ; dh - line num
+    644						     ; dl - col	num
+    645
+    646	0343  8A 76 07				     mov dh, [bp + 7]
+    647	0346  D0 EE				     shr dh, 1
+    648	0348  80 C6 05				     add dh, FrameBegLine
+    649
+    650	034B  8A 6E 08				     mov ch, [bp + 8]
+    651	034E  8A 56 06				     mov dl, [bp + 6]
+    652	0351  2A D5				     sub dl, ch
+    653	0353  D0 EA				     shr dl, 1
+    654	0355  80 C2 14				     add dl, FrameBegCol
+    655
+    656	0358  8B 5E 04				     mov bx, [bp + 4]
+    657
+    658	035B  02 EA				     add ch, dl
+    659
+    660	035D  3A D5		     @@printchar:    cmp dl, ch
+    661	035F  73 0C				     jae @@endprint
     662
-    663	037F  FF 76 F6				     push [bp -	10]
-    664	0382  FF 76 FE				     push [bp -	2]
-    665	0385  FF 76 F8				     push [bp -	8]
-    666	0388  E8 FF6A				     call PrintText
-    667	038B  83 C4 06				     add sp, 6
-    668
-    669	038E  EB 01 90				     jmp @@ProgramEnd
+    663	0361  53				     push bx
+    664	0362  8A 0F				     mov cl, [bx]
+    665	0364  E8 FDB0				     call ModSymbol
+    666	0367  5B				     pop bx
+    667
+    668	0368  FE C2				     inc dl
+    669	036A  43				     inc bx
     670
-    671	0391			     @@ErrNotEnoughArgs:
-    672						     ; TODO err	print
-    673
-    674
-    675	0391  83 C4 0A		     @@ProgramEnd:   add sp, 10
-    676						     EOP
-1   677	0394  B8 4C00				     mov ax, 4c00h
-1   678	0397  CD 21				     int 21h
+    671	036B  EB F0				     jmp @@printchar
+    672
+    673	036D			     @@endprint:
+    674	036D  5D				     pop bp
+    675	036E  C3				     ret
+    676	036F					     endp
+    677				     ;--------------------------------------
+    678
     679
-    680	0399  2F 2D 5C 7C 20 7C	5C+  Styles  db	"/-\| |\-/"
-    681	      2D 2F
-    682	03A2  DA C4 BF B3 20 B3	C0+	     db	0dah, 0c4h, 0bfh, 0b3h,	Space, 0b3h, 0c0h, 0c4h, 0d9h ;	single frame
-    683	      C4 D9
-    684	03AB  C9 CD BB BA 20 BA	C8+	     db	0c9h, 0cdh, 0bbh, 0bah,	Space, 0bah, 0c8h, 0cdh, 0bch ;	double frame
-Turbo Assembler	 Version 4.1	    02/15/24 04:34:45	    Page 13
+    680				     ;--------------------------------------
+    681				     ; Gets hex	color from argv
+    682				     ; GetColor(byte* color)
+    683				     ; Entry:	     bx	= current symbol in argv
+    684				     ; Assumes:
+Turbo Assembler	 Version 4.1	    02/15/24 19:46:08	    Page 13
 prog.asm
 
 
 
-    685	      CD BC
-    686	03B4  03 03 03 03 20 03	03+	     db	003h, 003h, 003h, 003h,	Space, 003h, 003h, 003h, 003h ;	hearts
-    687	      03 03
-    688
+    685				     ; Effect:	     bx	- moves	it to next token
+    686				     ; Destr:	     ax
+    687				     ;--------------------------------------
+    688	036F			     GetColor	     proc
     689
-    690	      =004E		     FrameColorAttr  equ 4eh ; 01001110b
-    691
+    690	036F  55				     push bp
+    691	0370  8B EC				     mov bp, sp
     692
-    693				     end	     Start
-Turbo Assembler	 Version 4.1	    02/15/24 04:34:45	    Page 14
+    693	0372  E8 FEC0				     call SkipSpaces
+    694	0375  83 FB FF				     cmp bx, -1
+    695	0378  74 0A				     je	@@GetColorEnd
+    696
+    697	037A  E8 FEF5				     call GetHexNumber
+    698
+    699	037D  53				     push bx
+    700	037E  8B 5E 04				     mov bx, [bp + 4]
+    701	0381  88 0F				     mov byte ptr [bx],	cl
+    702	0383  5B				     pop bx
+    703
+    704	0384  5D		     @@GetColorEnd:  pop bp
+    705	0385  C3				     ret
+    706	0386					     endp
+    707				     ;--------------------------------------
+    708
+    709				     ;======================================
+    710	0386			     main:
+    711	0386  FC				     cld
+    712	0387  8B EC				     mov bp, sp
+    713
+    714	0389  BB B800				     mov bx, 0b800h
+    715	038C  8E C3				     mov es, bx	; videomem seg
+    716
+    717	038E  E8 FE82				     call MakeConsoleBrightAgain
+    718
+    719						     ; locals:
+    720						     ; [bp - 2]	 = width_height
+    721						     ; [bp - 4]	 = color
+    722						     ; [bp - 6]	 = style
+    723						     ; [bp - 8]	 = text
+    724						     ; [bp - 10] = text	len
+    725	0391  83 EC 0A				     sub sp, 10
+    726
+    727	0394  BB 0081				     mov bx, ArgvAddr
+    728
+    729	0397  8D 46 FE				     lea ax, [bp - 2]
+    730	039A  50				     push ax
+    731	039B  E8 FF1F				     call GetWidthHeight
+    732	039E  83 C4 02				     add sp, 2
+    733	03A1  83 FB FF				     cmp bx, -1
+    734	03A4  74 5B				     je	@@ErrNotEnoughArgs
+    735
+    736	03A6  8D 46 FC				     lea ax, [bp - 4]
+    737	03A9  50				     push ax
+    738	03AA  E8 FFC2				     call GetColor
+    739	03AD  83 C4 02				     add sp, 2
+    740	03B0  83 FB FF				     cmp bx, -1
+    741	03B3  74 4C				     je	@@ErrNotEnoughArgs
+Turbo Assembler	 Version 4.1	    02/15/24 19:46:08	    Page 14
+prog.asm
+
+
+
+    742
+    743	03B5  8D 46 FA				     lea ax, [bp - 6]
+    744	03B8  50				     push ax
+    745	03B9  E8 FF25				     call GetStyle
+    746	03BC  83 C4 02				     add sp, 2
+    747	03BF  83 FB FF				     cmp bx, -1
+    748	03C2  74 3D				     je	@@ErrNotEnoughArgs
+    749
+    750	03C4  8D 46 F6				     lea ax, [bp - 10]
+    751	03C7  50				     push ax
+    752	03C8  8D 46 F8				     lea ax, [bp - 8]
+    753	03CB  50				     push ax
+    754	03CC  E8 FF4B				     call GetText
+    755	03CF  83 C4 04				     add sp, 4
+    756	03D2  83 FB FF				     cmp bx, -1
+    757	03D5  74 2A				     je	@@ErrNotEnoughArgs
+    758
+    759	03D7  FF 76 FC				     push [bp -	4]
+    760	03DA  FF 76 FE				     push [bp -	2]
+    761	03DD  FF 76 FA				     push [bp -	6]
+    762	03E0  E8 FD5D				     call DrawFrame
+    763	03E3  83 C4 06				     add sp, 6
+    764
+    765	03E6  FF 76 FE				     push [bp -	2]
+    766	03E9  E8 FDF4				     call DrawShadow
+    767	03EC  83 C4 02				     add sp, 2
+    768
+    769	03EF  FF 76 F6				     push [bp -	10]
+    770	03F2  FF 76 FE				     push [bp -	2]
+    771	03F5  FF 76 F8				     push [bp -	8]
+    772	03F8  E8 FF45				     call PrintText
+    773	03FB  83 C4 06				     add sp, 6
+    774
+    775	03FE  EB 01 90				     jmp @@ProgramEnd
+    776
+    777	0401			     @@ErrNotEnoughArgs:
+    778						     ; TODO err	print
+    779
+    780
+    781	0401  83 C4 0A		     @@ProgramEnd:   add sp, 10
+    782						     EOP
+1   783	0404  B8 4C00				     mov ax, 4c00h
+1   784	0407  CD 21				     int 21h
+    785
+    786	0409  2F 2D 5C 7C 20 7C	5C+  Styles  db	"/-\| |\-/"
+    787	      2D 2F
+    788	0412  DA C4 BF B3 20 B3	C0+	     db	0dah, 0c4h, 0bfh, 0b3h,	Space, 0b3h, 0c0h, 0c4h, 0d9h ;	single frame
+    789	      C4 D9
+    790	041B  C9 CD BB BA 20 BA	C8+	     db	0c9h, 0cdh, 0bbh, 0bah,	Space, 0bah, 0c8h, 0cdh, 0bch ;	double frame
+    791	      CD BC
+    792	0424  03 03 03 03 20 03	03+	     db	003h, 003h, 003h, 003h,	Space, 003h, 003h, 003h, 003h ;	hearts
+    793	      03 03
+    794
+    795
+    796	      =004E		     FrameColorAttr  equ 4eh ; 01001110b
+    797
+    798
+Turbo Assembler	 Version 4.1	    02/15/24 19:46:08	    Page 15
+prog.asm
+
+
+
+    799				     end	     Start
+Turbo Assembler	 Version 4.1	    02/15/24 19:46:08	    Page 16
 Symbol Table
 
 
@@ -766,22 +882,27 @@ Symbol Name			  Type	 Value
 
 ??DATE				  Text	 "02/15/24"
 ??FILENAME			  Text	 "prog	  "
-??TIME				  Text	 "04:34:45"
+??TIME				  Text	 "19:46:07"
 ??VERSION			  Number 040A
 @32BIT				  Text	 0
+@@CHDELSE			  Near	 DGROUP:02BA
+@@CHDELSEIF			  Near	 DGROUP:02AD
+@@CHDENDIF			  Near	 DGROUP:02BC
 @@CHECKOK			  Near	 DGROUP:0234
-@@DEFINEDSTYLE			  Near	 DGROUP:02B7
-@@ENDPRINT			  Near	 DGROUP:0322
+@@DEFINEDSTYLE			  Near	 DGROUP:0302
+@@ENDPRINT			  Near	 DGROUP:036D
 @@ENDWHILE			  Near	 DGROUP:0243
-@@ERRNOTENOUGHARGS		  Near	 DGROUP:0391
-@@FUNCEND			  Near	 DGROUP:0294
+@@ERRNOTENOUGHARGS		  Near	 DGROUP:0401
+@@FUNCEND			  Near	 DGROUP:02DF
+@@GETCOLOREND			  Near	 DGROUP:0384
 @@GETDECEND			  Near	 DGROUP:0271
-@@GETSTYLEEND			  Near	 DGROUP:02CD
-@@GETTEXTEND			  Near	 DGROUP:02F3
-@@PRINTCHAR			  Near	 DGROUP:0312
-@@PROGRAMEND			  Near	 DGROUP:0391
+@@GETHEXEND			  Near	 DGROUP:029F
+@@GETSTYLEEND			  Near	 DGROUP:0318
+@@GETTEXTEND			  Near	 DGROUP:033E
+@@PRINTCHAR			  Near	 DGROUP:035D
+@@PROGRAMEND			  Near	 DGROUP:0401
 @@WHILE				  Near	 DGROUP:0235
-@@WRITESTYLE			  Near	 DGROUP:02C6
+@@WRITESTYLE			  Near	 DGROUP:0311
 @CODE				  Text	 DGROUP
 @CODESIZE			  Text	 0
 @CPU				  Text	 0707H
@@ -796,6 +917,7 @@ Symbol Name			  Type	 Value
 ARGCADDR			  Number 0080
 ARGVADDR			  Number 0081
 CHECKARGC			  Near	 DGROUP:0227
+CONVERTHEXDIGIT			  Near	 DGROUP:02A0
 DFLEWHILE			  Near	 DGROUP:0192
 DFLEWHILEEND			  Near	 DGROUP:01A2
 DFLWHILE			  Near	 DGROUP:01BE
@@ -812,32 +934,34 @@ DSHORWHILEEND			  Near	 DGROUP:0211
 DSVERTWHILE			  Near	 DGROUP:01F1
 DSVERTWHILEEND			  Near	 DGROUP:0203
 FRAMEBEGCOL			  Number 0014
-FRAMEBEGLINE			  Number 0005
-FRAMECOLORATTR			  Number 004E
-GETDECIMALNUMBER		  Near	 DGROUP:0244
-GETSTYLE			  Near	 DGROUP:0296
-GETTEXT				  Near	 DGROUP:02CF
-GETWIDTHHEIGHT			  Near	 DGROUP:0272
-Turbo Assembler	 Version 4.1	    02/15/24 04:34:45	    Page 15
+Turbo Assembler	 Version 4.1	    02/15/24 19:46:08	    Page 17
 Symbol Table
 
 
 
-MAIN				  Near	 DGROUP:0324
+FRAMEBEGLINE			  Number 0005
+FRAMECOLORATTR			  Number 004E
+GETCOLOR			  Near	 DGROUP:036F
+GETDECIMALNUMBER		  Near	 DGROUP:0244
+GETHEXNUMBER			  Near	 DGROUP:0272
+GETSTYLE			  Near	 DGROUP:02E1
+GETTEXT				  Near	 DGROUP:031A
+GETWIDTHHEIGHT			  Near	 DGROUP:02BD
+MAIN				  Near	 DGROUP:0386
 MAKECONSOLEBRIGHTAGAIN		  Near	 DGROUP:0213
 MCBAWHILE			  Near	 DGROUP:0218
 MCBAWHILEEND			  Near	 DGROUP:0226
 MODSYMBOL			  Near	 DGROUP:0117
 MODSYMBOLATTR			  Near	 DGROUP:012B
 NEWLINE				  Number 000D
-PRINTTEXT			  Near	 DGROUP:02F5
+PRINTTEXT			  Near	 DGROUP:0340
 SCREENHEIGHT			  Number 001A
 SCREENWIDTH			  Number 0050
 SHADOWATTRMASK			  Number 0087
 SKIPSPACES			  Near	 DGROUP:0235
 SPACE				  Number 0020
 START				  Near	 DGROUP:0100
-STYLES				  Byte	 DGROUP:0399
+STYLES				  Byte	 DGROUP:0409
 
 Macro Name
 
@@ -847,5 +971,5 @@ Groups & Segments		  Bit Size Align  Combine Class
 
 DGROUP				  Group
   _DATA				  16  0000 Word	  Public  DATA
-  _TEXT				  16  03BD Word	  Public  CODE
+  _TEXT				  16  042D Word	  Public  CODE
 
