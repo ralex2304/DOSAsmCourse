@@ -396,6 +396,7 @@ SkipSpaces 	proc
 GetDecimalNumber proc
 
 		call SkipSpaces
+		call CheckArgc
 		cmp bx, -1
 		je @@GetDecEnd
 
@@ -438,6 +439,7 @@ GetDecimalNumber proc
 GetHexNumber proc
 
 		call SkipSpaces
+		call CheckArgc
 		cmp bx, -1
 		je @@GetHexEnd
 
@@ -551,6 +553,7 @@ GetStyle	proc
 		mov bp, sp
 
 		call SkipSpaces
+		call CheckArgc
 		cmp bx, -1
 		je @@GetStyleEnd
 
@@ -773,6 +776,7 @@ GetColor	proc
 		mov bp, sp
 
 		call SkipSpaces
+		call CheckArgc
 		cmp bx, -1
 		je @@GetColorEnd
 

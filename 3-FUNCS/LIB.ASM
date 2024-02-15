@@ -210,7 +210,7 @@ mymemcmp	proc
 		mov si, [bp + 6] ; si = offset buf2
 		mov cx, [bp + 8] ; cx = n
 
-		repe CMPSB
+		repe cmpsb
 
 		xor al, al
 		mov ah, es:[di - 1]
