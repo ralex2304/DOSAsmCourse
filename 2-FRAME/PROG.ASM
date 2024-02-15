@@ -7,6 +7,8 @@ include ..\macros.asm
 
 Start:		jmp main
 
+include ..\3-FUNCS\LIB.ASM
+
 ScreenWidth	equ 80
 ScreenHeight	equ 26
 
@@ -344,7 +346,9 @@ MCBAwhileEnd:
 ;--------------------------------------
 CheckArgc	proc
 
-		mov ax, ds:[ArgcAddr]
+		; bx < *argc + argv
+		xor ah, ah
+		mov al, ds:[ArgcAddr]
 		add ax, ArgvAddr
 		cmp bx, ax
 		jb @@CheckOK
@@ -587,11 +591,11 @@ GetStyle	proc
 
 ;--------------------------------------
 ; Gets text from argv
-; GetText(byte* text, byte* text_len)
+; GetText(byte* header, byte* text, word* header_len_text_len)
 ; Entry:	bx = current symbol in argv
 ; Assumes:
 ; Effect:
-; Destr:	ax, bx
+; Destr:	ax, bx, dx
 ;--------------------------------------
 GetText	proc
 
@@ -603,18 +607,67 @@ GetText	proc
 		je @@GetTextEnd
 
 		push bx
-		sub bx, ArgvAddr
-		mov al, ds:[ArgcAddr]
-		sub al, bl
-
-		mov bx, [bp + 6]
-		xor ah, ah
-		mov word ptr [bx], ax
-
-		pop bx
 		mov ax, bx
 		mov bx, [bp + 4]
 		mov word ptr [bx], ax
+		pop bx
+
+		push bx
+		sub bx, ArgvAddr
+		mov dl, ds:[ArgcAddr]
+		sub dl, bl ; dl = len(header + ':' + text)
+		pop bx
+
+		push es
+		xor dh, dh
+		push dx
+		push ':'
+		push bx
+		call mymemchr
+		add sp, 6
+		pop es
+
+
+		cmp ax, 0
+		je @@NoText
+
+		; cnt len
+		mov cx, ax
+		sub cx, bx ; cx = len(header)
+
+		mov bx, ax
+		inc bx
+
+		push bx
+		mov bx, [bp + 8]
+		mov byte ptr [bx], cl
+
+		sub dl, cl
+		dec dl ; dl = len(text)
+
+		mov bx, [bp + 8]
+		mov byte ptr [bx + 1], dl
+		pop bx
+
+		push bx
+		mov ax, bx
+		mov bx, [bp + 6]
+		mov word ptr [bx], ax
+		pop bx
+
+		jmp @@GetTextEnd
+@@NoText:
+
+		push bx
+		mov bx, [bp + 8]
+		xor dh, dh
+		mov word ptr [bx], dx
+
+		mov bx, [bp + 6]
+		mov word ptr [bx], 0
+
+		pop bx
+
 
 @@GetTextEnd:	pop bp
 		ret
@@ -622,34 +675,14 @@ GetText	proc
 ;--------------------------------------
 
 ;--------------------------------------
-; Prints text
-; GetText(byte* text, word width_height, byte text_len)
-; Entry:
-; Assumes:	es = 0b800h
-; Effect:
-; Destr:	ax, bx, cx, dx
+; Entry:	dl = col num
+;		dh = line num
+;		ch = line end ptr
+;		bx = str
+;
+; Destr:	cl, dl, bx
 ;--------------------------------------
-PrintText	proc
-
-		push bp
-		mov bp, sp
-
-		; dh - line num
-		; dl - col num
-
-		mov dh, [bp + 7]
-		shr dh, 1
-		add dh, FrameBegLine
-
-		mov ch, [bp + 8]
-		mov dl, [bp + 6]
-		sub dl, ch
-		shr dl, 1
-		add dl, FrameBegCol
-
-		mov bx, [bp + 4]
-
-		add ch, dl
+PrintLine	proc
 
 @@printchar:	cmp dl, ch
 		jae @@endprint
@@ -665,11 +698,66 @@ PrintText	proc
 		jmp @@printchar
 
 @@endprint:
-		pop bp
+		ret
+		endp
+
+;--------------------------------------
+
+;--------------------------------------
+; Prints text
+; GetText(byte* header, byte* text, word width_height, word header_len_text_len)
+; Entry:
+; Assumes:	es = 0b800h
+; Effect:
+; Destr:	ax, bx, cx, dx
+;--------------------------------------
+PrintText	proc
+
+		push bp
+		mov bp, sp
+
+		; dh - line num
+		; dl - col num
+
+		mov dh, FrameBegLine + 1
+
+		mov ch, [bp + 10] ; ch = header_len
+		mov dl, [bp + 8]
+		sub dl, ch
+		shr dl, 1
+		add dl, FrameBegCol
+
+		mov bx, [bp + 4]  ; bx = header
+
+		add ch, dl        ; ch = header_len + col_num
+
+		call PrintLine    ; header
+
+
+		mov ch, [bp + 11] ; ch = text_len
+
+		cmp ch, 0
+		je @@PrintNoText
+
+		mov dl, [bp + 8]
+		sub dl, ch
+		shr dl, 1
+		add dl, FrameBegCol
+
+		mov dh, [bp + 9]
+		shr dh, 1
+		add dh, FrameBegLine
+
+		mov bx, [bp + 6]  ; bx = text
+
+		add ch, dl        ; ch = text_len + col_num
+
+		call PrintLine    ; text
+
+@@PrintNoText:	pop bp
 		ret
 		endp
 ;--------------------------------------
-
 
 ;--------------------------------------
 ; Gets hex color from argv
@@ -714,9 +802,10 @@ main:
 		; [bp - 2]  = width_height
 		; [bp - 4]  = color
 		; [bp - 6]  = style
-		; [bp - 8]  = text
-		; [bp - 10] = text len
-		sub sp, 10
+		; [bp - 8]  = header
+		; [bp - 10] = text
+		; [bp - 12] = header_len_text_len
+		sub sp, 12
 
 		mov bx, ArgvAddr
 
@@ -741,12 +830,14 @@ main:
 		cmp bx, -1
 		je @@ErrNotEnoughArgs
 
+		lea ax, [bp - 12]
+		push ax
 		lea ax, [bp - 10]
 		push ax
 		lea ax, [bp - 8]
 		push ax
 		call GetText
-		add sp, 4
+		add sp, 6
 		cmp bx, -1
 		je @@ErrNotEnoughArgs
 
@@ -760,19 +851,22 @@ main:
 		call DrawShadow
 		add sp, 2
 
-		push [bp - 10]
+		push [bp - 12]
 		push [bp - 2]
+		push [bp - 10]
 		push [bp - 8]
 		call PrintText
-		add sp, 6
+		add sp, 8
 
 		jmp @@ProgramEnd
 
 @@ErrNotEnoughArgs:
 		; TODO err print
+		mov ah, 09h
+		mov dx, offset ErrNotEnoughArgsStr
+		int 21h
 
-
-@@ProgramEnd:	add sp, 10
+@@ProgramEnd:	add sp, 12
 		EOP
 
 Styles 	db "/-\| |\-/"
@@ -780,6 +874,7 @@ Styles 	db "/-\| |\-/"
 	db 0c9h, 0cdh, 0bbh, 0bah, Space, 0bah, 0c8h, 0cdh, 0bch ; double frame
 	db 003h, 003h, 003h, 003h, Space, 003h, 003h, 003h, 003h ; hearts
 
+ErrNotEnoughArgsStr db "Not enough arguments$"
 
 FrameColorAttr	equ 4eh ; 01001110b
 
