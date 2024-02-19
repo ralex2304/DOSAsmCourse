@@ -3,6 +3,8 @@
 .code
 org 100h
 
+locals @@
+
 include ..\macros.asm
 
 Start:		jmp main
@@ -24,290 +26,224 @@ ArgcAddr	equ 0080h
 ArgvAddr	equ 0081h
 
 ;--------------------------------------
-; Draws symbol
-; Entry:	dh - line num
-;		dl - col num
-;		cl - symbol
-;		ch - attr
+; Draws frame
+; Entry:	bp = style str addr
+;		cl = width
+;		ch = height
+;		dh = color
+;
 ; Assumes:	es = 0b800h
-; Destr:	ax, bx
-;--------------------------------------
-DrawSymbol	proc
-
-		mov al, dh
-		mov bl, ScreenWidth
-		mul bl	   ; ax = dh * ScreenWidth
-
-		xor bx, bx
-		mov bl, dl
-		add ax, bx ; ax += dl (col num)
-
-		shl ax, 1 ; ax *= 2
-
-		mov bx, ax
-		mov word ptr es:[bx], cx
-
-		ret
-		endp
-;--------------------------------------
-
-;--------------------------------------
-; Draws symbol wirhout changing attributes
-; Entry:	dh - line num
-;		dl - col num
-;		cl - symbol
-; Assumes:	es = 0b800h
-; Destr:	ax, bx
-;--------------------------------------
-ModSymbol	proc
-
-		mov al, dh
-		mov bl, ScreenWidth
-		mul bl	   ; ax = dh * ScreenWidth
-
-		xor bx, bx
-		mov bl, dl
-		add ax, bx ; ax += dl (col num)
-
-		shl ax, 1 ; ax *= 2
-
-		mov bx, ax
-		mov byte ptr es:[bx], cl
-
-		ret
-		endp
-;--------------------------------------
-
-;--------------------------------------
-; Modifies symbol attr (applies & operation with attr mask)
-; Entry:	dh - line num
-;		dl - col num
-;		ch - attr mask
-; Assumes:	es = 0b800h
-; Destr:	ax, bx
-;--------------------------------------
-ModSymbolAttr	proc
-
-		push dx
-
-		mov al, dh
-		mov bl, ScreenWidth
-		mul bl	   ; ax = dh * ScreenWidth
-
-		xor dh, dh
-		add ax, dx ; ax += dl (col num)
-
-		shl ax, 1 ; ax *= 2
-
-		mov bx, ax
-		inc bx ; attr address
-
-		and byte ptr es:[bx], ch
-
-		pop dx
-		ret
-		endp
-;--------------------------------------
-
-;--------------------------------------
-; Draws frame (const byte* style_str, word width_height, byte color)
-; Entry:
-; Assumes:	es = 0b800h
-; Destr:	ax, bx, cx, dx
+; Destr:	ax, bx, dh
 ;--------------------------------------
 DrawFrame	proc
 
-		push bp
-		mov bp, sp
+		mov bx, (FrameBegLine * ScreenWidth + FrameBegCol) * 2
+		; bx => x = 0; y = 0
 
-		; init attr
-		mov ch, [bp + 8]
-
-		mov dh, FrameBegLine
-
-		; top empty line
-		push [bp + 6]
 		call DrawFrameEmptyLine
-		; [bp + 6] is used in next call
-		inc dh
+		add bx, ScreenWidth * 2
+		xor ah, ah
+		mov al, cl
+		shl ax, 1  ; ax = width * 2
+		sub bx, ax ; bx => x = 0; y = 1
 
 		; top line
-		push [bp + 4]
 		call DrawFrameLine
-		add sp, 2 ; [bp + 6] is used in next call
+		add bx, ScreenWidth * 2
+		xor ah, ah
+		mov al, cl
+		shl ax, 1  ; ax = width * 2
+		sub bx, ax ; bx => x = 0; y = 2
 
 		; middle lines
-		mov ax, [bp + 4]
-		add ax, 3
-		push ax
+		add bp, 3
 
-DFWhile:	inc dh
-		mov bl, [bp + 7]
-		add bl, FrameBegLine - 3
-		cmp dh, bl
-		ja DFWhileEnd
+		mov ax, ScreenWidth * 2
+		mul ch
+		sub ax, (4 * ScreenWidth) * 2
+		add ax, bx
 
+		jmp @@DFwhileClause
+@@DFwhile:
+		push ax ; save ax
 		call DrawFrameLine
-		jmp DFWhile
-DFWhileEnd:
-		add sp, 2 ; [bp + 6] is used in next call
+		add bx, ScreenWidth * 2
+		xor ah, ah
+		mov al, cl
+		shl ax, 1
+		sub bx, ax
+
+		pop ax ; restore ax
+@@DFwhileClause:
+		cmp bx, ax
+		jb @@DFwhile
 
 		; bottom line
-		mov ax, [bp + 4]
-		add ax, 6
-		push ax
+		add bp, 3
+
 		call DrawFrameLine
-		add sp, 2 ; [bp + 6] is used in next call
-		inc dh
+		add bx, ScreenWidth * 2
+		xor ah, ah
+		mov al, cl
+		shl ax, 1
+		sub bx, ax
 
-		; bottom empty line
 		call DrawFrameEmptyLine
-		add sp, 2
 
-		pop bp
 		ret
 		endp
 ;---------------------------------------
 
-;---------------------------------------
-; Draws one line of fram (1 symbol + n symbols + 1 symbol)
-; DrawDrameEmptyLine (word width)
-;
-; RegEntry:	ch = color attr
-;		dh = line num
-; Assumes:	es = 0b800h
-;		ds allows to reach style_str
-;
-; Destr:	ax, bx, cl, dl
 ;--------------------------------------
+; Draws one empty line of frame
+; DrawFrameEmptyLine
+; Entry:	bx = line beginning symbol addr
+;		cl = width
+;		ch = height
+;		dh = color
+;
+; Assumes:	es = 0b800h
+;
+; Destr:	ax, dl
+; Return:	bx = symbol after the last symbol in the line
+;-------------------------------------
+
 DrawFrameEmptyLine	proc
 
-		push bp
-		mov bp, sp
+		mov dl, Space
 
-		mov cl, Space
-		mov dl, FrameBegCol
+		mov es:[bx], dx
+		add bx, 2
 
-		; while (dl++ < FrameWidth + FrameBegCol - 1):
-		; 	DrawSymbol()
-DFLEwhile:	mov al, [bp + 4]
-		add al, FrameBegCol - 1
-		cmp dl, al
-		ja DFLEwhileEnd
+		xor ax, ax
+		mov al, cl
+		sub al, 1
+		shl ax, 1
+		add ax, bx
 
-		call DrawSymbol
+		jmp @@DFLEwhileClause
+@@DFLEwhile:
+		mov es:[bx], dx
+		add bx, 2
 
-		inc dl
-		jmp DFLEwhile
-DFLEwhileEnd:
+@@DFLEwhileClause:
+		cmp bx, ax
+		jb @@DFLEwhile
 
-		pop bp
 		ret
 		endp
-
 ;--------------------------------------
 
 ;--------------------------------------
 ; Draws one line of fram (1 symbol + n symbols + 1 symbol)
-; DrawDrameLine (const byte* style_str, word width_height)
+; DrawDrameLine
+; Entry:	bp = style str addr
+;		bx = line beginning symbol addr
+;		cl = width
+;		ch = height
+;		dh = color
 ;
-; RegEntry:	ch = color attr
 ; Assumes:	es = 0b800h
 ;		ds allows to reach style_str
 ;
-; Destr:	ax, bx, cl, dl
+; Destr:	ax, dl
+; Return:	bx = symbol after the last symbol in the line
 ;-------------------------------------
 
 DrawFrameLine	proc
 
-		push bp
-		mov bp, sp
-
 		; write empty symbol
-		mov dl, FrameBegCol
-		mov cl, Space
-		call DrawSymbol
+		mov dl, Space
+		mov es:[bx], dx
+		add bx, 2
 
 		; write left symbol
-		inc dl
-		mov bx, [bp + 4]
-		mov cl, [bx]
-		call DrawSymbol
+		mov dl, [bp]
+		mov es:[bx], dx
+		add bx, 2
 
-		; write middle symbols
-		mov bx, [bp + 4]
-		mov cl, [bx + 1]
+		mov dl, [bp + 1]
 
-		; while (dl++ < FrameWidth - 4 + (FrameBegCol + 1)):
-		; 	DrawSymbol()
-DFLwhile:	inc dl
-		mov al, [bp + 6]
-		add al, (FrameBegCol + 1) - 4
-		cmp dl, al
-		ja DFLwhileEnd
 
-		call DrawSymbol
+		xor ax, ax
+		mov al, cl
+		sub al, 2 * 2
+		shl ax, 1
+		add ax, bx
 
-		jmp DFLWhile
-DFLwhileEnd:
+		jmp @@DFLwhileClause
+@@DFLwhile:
+		mov es:[bx], dx
+		add bx, 2
+
+@@DFLwhileClause:
+		cmp bx, ax
+		jb @@DFLwhile
+
 		; write right symbol
-		mov bx, [bp + 4]
-		mov cl, [bx + 2]
-		call DrawSymbol
+		mov dl, [bp + 2]
+		mov es:[bx], dx
+		add bx, 2
 
 		; write empty symbol
-		inc dl
-		mov cl, Space
-		call DrawSymbol
+		mov dl, Space
+		mov es:[bx], dx
+		add bx, 2
 
-		pop bp
 		ret
 		endp
-
 ;--------------------------------------
 
 ;--------------------------------------
 ; Draws shadow
-; DrawShadow (word width_height)
-; Entry:
+; DrawShadow
+; Entry:	cl = width
+;		ch = height
+;
 ; Assumes:	es = 0b800h
 ;
-; Destr: ax, bx, cx, dx
+; Destr:	ax, bx
 ;--------------------------------------
 DrawShadow	proc
 
-		push bp
-		mov bp, sp
+		xor bh, bh
+		mov bl, cl
+		add bx, ScreenWidth * (FrameBegLine + 1) + FrameBegCol
+		shl bx, 1
 
-		mov ch, ShadowAttrMask
-		mov dh, FrameBegLine + 1
-		mov dl, FrameBegCol
-		add dl, [bp + 4]
+		mov ax, ScreenWidth * 2
+		mul ch
+		sub ax, ScreenWidth * 2
+		add ax, bx
 
-		mov cl, FrameBegLine
-		add cl, [bp + 5] ; FrameHeight
-DSvertWhile:	cmp dh, cl
-		ja DSvertWhileEnd
+		jmp @@DSVwhileClause
+@@DSVwhile:
+		and byte ptr es:[bx + 1], ShadowAttrMask
+		and byte ptr es:[bx + 3], ShadowAttrMask
 
-		call ModSymbolAttr
-		inc dl
-		call ModSymbolAttr
-		dec dl
+		add bx, ScreenWidth * 2
 
-		inc dh
-		jmp DSvertWhile
-DSvertWhileEnd:
-		dec dh
+@@DSVwhileClause:
+		cmp bx, ax
+		jb @@DSVwhile
 
-DShorWhile:	cmp dl, FrameBegCol + 2 ; 2 symbols margin
-		jb DShorWhileEnd
+		add bx, 2
 
-		call ModSymbolAttr
-		dec dl
-		jmp DShorWhile
-DShorWhileEnd:
+		xor ah, ah
+		mov al, cl
+		shl ax, 1
+		sub ax, bx
+		neg ax
 
-		pop bp
+		jmp @@DSHwhileClause
+@@DSHwhile:
+		and byte ptr es:[bx + 1], ShadowAttrMask
+		sub bx, 2
+
+@@DSHwhileClause:
+		cmp bx, ax
+		ja @@DSHwhile
+
 		ret
 		endp
 ;--------------------------------------
@@ -337,460 +273,7 @@ MCBAwhileEnd:
 		endp
 ;--------------------------------------
 
-;--------------------------------------
-; Checks if argc is exceeded
-;
-; Entry:	bx = current symbol in argv
-; Effect:	bx = -1 if argc is exceeded
-; Destr:	ax
-;--------------------------------------
-CheckArgc	proc
-
-		; bx < *argc + argv
-		xor ah, ah
-		mov al, ds:[ArgcAddr]
-		add ax, ArgvAddr
-		cmp bx, ax
-		jb @@CheckOK
-
-		mov bx, -1
-@@CheckOK:
-		ret
-		endp
-
-
-;--------------------------------------
-
-;--------------------------------------
-; Skips spaces in argv. Also stops and puts bx to -1 if argc is exceeded
-;
-; Entry:	bx = current symbol in argv
-; Assumes:
-; Effect:	bx - moves it to next non space symbol
-; Destr:	ax
-;--------------------------------------
-SkipSpaces 	proc
-
-@@while:	cmp byte ptr [bx], Space
-		jne @@endwhile
-
-		inc bx
-
-		call CheckArgc
-		cmp bx, -1
-		jne @@while
-@@endwhile:
-		ret
-		endp
-;--------------------------------------
-
-;--------------------------------------
-; Gets decimal number into cl from argv
-; Entry:	bx = current symbol in argv
-; Assumes:
-; Effect:	bx - moves it to the symbol after number
-;		cl - returns number
-;
-; Destr:	ax, cl
-;--------------------------------------
-GetDecimalNumber proc
-
-		call SkipSpaces
-		call CheckArgc
-		cmp bx, -1
-		je @@GetDecEnd
-
-		mov cl, [bx]
-		sub cl, '0'
-		inc bx
-
-		cmp byte ptr [bx], Space
-		je @@GetDecEnd
-		cmp byte ptr [bx], NewLine
-		je @@GetDecEnd
-
-		call CheckArgc
-		cmp bx, -1
-		je @@GetDecEnd
-
-		mov al, 10
-		mul cl
-		mov cl, al
-
-		mov cl, [bx]
-		sub al, '0'
-		add cl, al
-
-		inc bx
-@@GetDecEnd:
-		ret
-		endp
-;--------------------------------------
-
-;--------------------------------------
-; Gets hex number into cl from argv
-; Entry:	bx = current symbol in argv
-; Assumes:
-; Effect:	bx - moves it to the symbol after number
-;		cl - returns number
-;
-; Destr:	ax, cl
-;--------------------------------------
-GetHexNumber proc
-
-		call SkipSpaces
-		call CheckArgc
-		cmp bx, -1
-		je @@GetHexEnd
-
-		mov al, [bx]
-		call ConvertHexDigit
-		mov cl, al
-		inc bx
-
-		cmp byte ptr [bx], Space
-		je @@GetHexEnd
-		cmp byte ptr [bx], NewLine
-		je @@GetHexEnd
-
-		call CheckArgc
-		cmp bx, -1
-		je @@GetHexEnd
-
-		shl cl, 4
-
-		mov al, [bx]
-		call ConvertHexDigit
-		add cl, al
-
-		inc bx
-@@GetHexEnd:
-		ret
-		endp
-;--------------------------------------
-
-;--------------------------------------
-; Converts hex digit in al
-; Entry:	al - symbol
-; Assumes:
-; Effect:	al - number
-;
-; Destr:
-;--------------------------------------
-ConvertHexDigit proc
-
-		; if ('0' <= al && al <= '9')
-		cmp al, '0'
-		jb @@CHDelseif
-		cmp al, '9'
-		ja @@CHDelseif
-
-		sub al, '0'
-		jmp @@CHDendif
-@@CHDelseif:
-		; else if ('a' <= al && al <= 'f')
-		cmp al, 'a'
-		jb @@CHDelse
-		cmp al, 'f'
-		ja @@CHDelse
-
-		sub al, 'a' - 10
-		jmp @@CHDendif
-@@CHDelse:
-		sub al, 'A' - 10
-@@CHDendif:
-		ret
-		endp
-;--------------------------------------
-
-;--------------------------------------
-; Gets width and height from argv
-; GetWidthHeight(word* width_height)
-; Entry:	bx = current symbol in argv
-; Assumes:
-; Effect:	bx - moves it to next token
-; Destr:	ax, cl
-;--------------------------------------
-GetWidthHeight	proc
-
-		push bp
-		mov bp, sp
-
-		call GetDecimalNumber
-		cmp bx, -1
-		je @@FuncEnd
-
-		push bx
-		mov bx, [bp + 4]
-		mov byte ptr [bx], cl
-		pop bx
-
-		call GetDecimalNumber
-		cmp bx, -1
-		je @@FuncEnd
-
-		push bx
-		mov bx, [bp + 4]
-		mov byte ptr [bx + 1], cl
-		pop bx
-
-@@FuncEnd:	pop bp
-		ret
-		endp
-;--------------------------------------
-
-;--------------------------------------
-; Gets frame style from argv
-; GetStyle(char* style)
-; Entry:	bx = current symbol in argv
-; Assumes:
-; Effect:	bx - moves it to next token
-; Destr:	ax, cx, dx
-;--------------------------------------
-GetStyle	proc
-
-		push bp
-		mov bp, sp
-
-		call SkipSpaces
-		call CheckArgc
-		cmp bx, -1
-		je @@GetStyleEnd
-
-		cmp byte ptr [bx], '*'
-		jne @@DefinedStyle
-
-		inc bx
-		call CheckArgc
-		cmp bx, -1
-		je @@GetStyleEnd
-
-		mov cx, bx
-		add bx, 9
-
-		jmp @@WriteStyle
-
-@@DefinedStyle:
-		mov al, 9
-		mov ah, [bx]
-		sub ah, '0'
-		mul ah
-
-		inc bx
-
-		mov cx, offset Styles
-		add cx, ax
-
-@@WriteStyle:
-		push bx
-		mov bx, [bp + 4]
-		mov word ptr [bx], cx
-		pop bx
-
-@@GetStyleEnd:	pop bp
-		ret
-		endp
-;--------------------------------------
-
-;--------------------------------------
-; Gets text from argv
-; GetText(byte* header, byte* text, word* header_len_text_len)
-; Entry:	bx = current symbol in argv
-; Assumes:
-; Effect:
-; Destr:	ax, bx, dx
-;--------------------------------------
-GetText	proc
-
-		push bp
-		mov bp, sp
-
-		call SkipSpaces
-		cmp bx, -1
-		je @@GetTextEnd
-
-		push bx
-		mov ax, bx
-		mov bx, [bp + 4]
-		mov word ptr [bx], ax
-		pop bx
-
-		push bx
-		sub bx, ArgvAddr
-		mov dl, ds:[ArgcAddr]
-		sub dl, bl ; dl = len(header + ':' + text)
-		pop bx
-
-		push es
-		xor dh, dh
-		push dx
-		push ':'
-		push bx
-		call mymemchr
-		add sp, 6
-		pop es
-
-
-		cmp ax, 0
-		je @@NoText
-
-		; cnt len
-		mov cx, ax
-		sub cx, bx ; cx = len(header)
-
-		mov bx, ax
-		inc bx
-
-		push bx
-		mov bx, [bp + 8]
-		mov byte ptr [bx], cl
-
-		sub dl, cl
-		dec dl ; dl = len(text)
-
-		mov bx, [bp + 8]
-		mov byte ptr [bx + 1], dl
-		pop bx
-
-		push bx
-		mov ax, bx
-		mov bx, [bp + 6]
-		mov word ptr [bx], ax
-		pop bx
-
-		jmp @@GetTextEnd
-@@NoText:
-
-		push bx
-		mov bx, [bp + 8]
-		xor dh, dh
-		mov word ptr [bx], dx
-
-		mov bx, [bp + 6]
-		mov word ptr [bx], 0
-
-		pop bx
-
-
-@@GetTextEnd:	pop bp
-		ret
-		endp
-;--------------------------------------
-
-;--------------------------------------
-; Entry:	dl = col num
-;		dh = line num
-;		ch = line end ptr
-;		bx = str
-;
-; Destr:	cl, dl, bx
-;--------------------------------------
-PrintLine	proc
-
-@@printchar:	cmp dl, ch
-		jae @@endprint
-
-		push bx
-		mov cl, [bx]
-		call ModSymbol
-		pop bx
-
-		inc dl
-		inc bx
-
-		jmp @@printchar
-
-@@endprint:
-		ret
-		endp
-
-;--------------------------------------
-
-;--------------------------------------
-; Prints text
-; GetText(byte* header, byte* text, word width_height, word header_len_text_len)
-; Entry:
-; Assumes:	es = 0b800h
-; Effect:
-; Destr:	ax, bx, cx, dx
-;--------------------------------------
-PrintText	proc
-
-		push bp
-		mov bp, sp
-
-		; dh - line num
-		; dl - col num
-
-		mov dh, FrameBegLine + 1
-
-		mov ch, [bp + 10] ; ch = header_len
-		mov dl, [bp + 8]
-		sub dl, ch
-		shr dl, 1
-		add dl, FrameBegCol
-
-		mov bx, [bp + 4]  ; bx = header
-
-		add ch, dl        ; ch = header_len + col_num
-
-		call PrintLine    ; header
-
-
-		mov ch, [bp + 11] ; ch = text_len
-
-		cmp ch, 0
-		je @@PrintNoText
-
-		mov dl, [bp + 8]
-		sub dl, ch
-		shr dl, 1
-		add dl, FrameBegCol
-
-		mov dh, [bp + 9]
-		shr dh, 1
-		add dh, FrameBegLine
-
-		mov bx, [bp + 6]  ; bx = text
-
-		add ch, dl        ; ch = text_len + col_num
-
-		call PrintLine    ; text
-
-@@PrintNoText:	pop bp
-		ret
-		endp
-;--------------------------------------
-
-;--------------------------------------
-; Gets hex color from argv
-; GetColor(byte* color)
-; Entry:	bx = current symbol in argv
-; Assumes:
-; Effect:	bx - moves it to next token
-; Destr:	ax
-;--------------------------------------
-GetColor	proc
-
-		push bp
-		mov bp, sp
-
-		call SkipSpaces
-		call CheckArgc
-		cmp bx, -1
-		je @@GetColorEnd
-
-		call GetHexNumber
-
-		push bx
-		mov bx, [bp + 4]
-		mov byte ptr [bx], cl
-		pop bx
-
-@@GetColorEnd:	pop bp
-		ret
-		endp
-;--------------------------------------
+include INTERF~1.ASM
 
 ;======================================
 main:
@@ -845,15 +328,15 @@ main:
 		cmp bx, -1
 		je @@ErrNotEnoughArgs
 
-		push [bp - 4]
-		push [bp - 2]
+		push bp ; save bp
+		mov cx, [bp - 2] ; width_height
+		mov dh, [bp - 4] ; color attr
 		push [bp - 6]
+		pop bp		 ; style
 		call DrawFrame
-		add sp, 6
+		pop bp ; restore bp
 
-		push [bp - 2]
 		call DrawShadow
-		add sp, 2
 
 		push [bp - 12]
 		push [bp - 2]
@@ -884,3 +367,32 @@ FrameColorAttr	equ 4eh ; 01001110b
 
 
 end		Start
+
+
+; middle lines
+		mov ax, [bp + 4]
+		add ax, 3
+		push ax
+
+DFWhile:	inc dh
+		mov bl, [bp + 7]
+		add bl, FrameBegLine - 3
+		cmp dh, bl
+		ja DFWhileEnd
+
+		call DrawFrameLine
+		jmp DFWhile
+DFWhileEnd:
+		add sp, 2 ; [bp + 6] is used in next call
+
+		; bottom line
+		mov ax, [bp + 4]
+		add ax, 6
+		push ax
+		call DrawFrameLine
+		add sp, 2 ; [bp + 6] is used in next call
+		inc dh
+
+		; bottom empty line
+		call DrawFrameEmptyLine
+		add sp, 2
