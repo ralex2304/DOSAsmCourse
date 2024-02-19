@@ -1,0 +1,93 @@
+Turbo Assembler	 Version 4.1	    02/19/24 21:37:09	    Page 1
+prog2.asm
+
+
+
+      1				     .286
+      2	0000			     .model tiny
+      3	0000			     .code
+      4				     org 100h
+      5				     locals @@
+      6
+      7
+      8	0100  6A 00		     Start:	     push 0
+      9	0102  07				     pop es
+     10
+     11	0103  BB 0024				     mov bx, 4 * 09h ; IRQ1 interrupt vector address
+     12
+     13	0106  FA				     cli
+     14	0107  26: C7 07	011Fr			     mov es:[bx], offset IntOverride09 ; addr offset
+     15	010C  0E				     push cs
+     16	010D  58				     pop ax
+     17	010E  26: 89 47	02			     mov es:[bx	+ 2], ax ; addr	segment
+     18	0112  FB				     sti
+     19
+     20	0113  BA 0142r				     mov dx, offset EndOfProg
+     21	0116  C1 EA 04				     shr dx, 4
+     22	0119  42				     inc dx	     ; sizeof(prog) / 16 + 1
+     23	011A  B8 3100				     mov ax, 3100h
+     24	011D  CD 21				     int 21h
+     25
+     26	011F			     IntOverride09   proc
+     27	011F  50 53 06				     push ax bx	es
+     28
+     29	0122  68 B800				     push 0b800h
+     30	0125  07				     pop es
+     31
+     32	0126  BB 0230				     mov bx, ((80 * 3) + 40) * 2
+     33	0129  B4 4E				     mov ah, 4eh ; color
+     34
+     35	012B  E4 60				     in	al, 60h	; symbol
+     36	012D  26: 89 07				     mov es:[bx], ax
+     37
+     38						     ; blink port 61h higher bit
+     39	0130  E4 61				     in	al, 61h
+     40						     ; mov ah, al ; thelp variant
+     41	0132  0C 80				     or	al, 80h
+     42	0134  E6 61				     out 61h, al
+     43	0136  24 7F				     and al, not 80h ; ded variant
+     44	0138  E6 61				     out 61h, al
+     45
+     46	013A  B0 20				     mov al, 20h
+     47	013C  E6 20				     out 20h, al
+     48
+     49	013E  07 5B 58				     pop es bx ax
+     50	0141  CF				     iret
+     51	0142					     endp
+     52	0142			     EndOfProg:
+     53
+     54				     end	     Start
+Turbo Assembler	 Version 4.1	    02/19/24 21:37:09	    Page 2
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "02/19/24"
+??FILENAME			  Text	 "prog2	  "
+??TIME				  Text	 "21:37:09"
+??VERSION			  Number 040A
+@32BIT				  Text	 0
+@CODE				  Text	 DGROUP
+@CODESIZE			  Text	 0
+@CPU				  Text	 0707H
+@CURSEG				  Text	 _TEXT
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@FILENAME			  Text	 PROG2
+@INTERFACE			  Text	 000H
+@MODEL				  Text	 1
+@STACK				  Text	 DGROUP
+@WORDSIZE			  Text	 2
+ENDOFPROG			  Near	 DGROUP:0142
+INTOVERRIDE09			  Near	 DGROUP:011F
+START				  Near	 DGROUP:0100
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  _DATA				  16  0000 Word	  Public  DATA
+  _TEXT				  16  0142 Word	  Public  CODE
+

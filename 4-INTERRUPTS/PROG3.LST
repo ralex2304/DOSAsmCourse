@@ -1,0 +1,94 @@
+Turbo Assembler	 Version 4.1	    02/19/24 22:01:29	    Page 1
+prog3.asm
+
+
+
+      1				     .286
+      2	0000			     .model tiny
+      3	0000			     .code
+      4				     org 100h
+      5				     locals @@
+      6
+      7
+      8	0100  6A 00		     Start:	     push 0
+      9	0102  07				     pop es
+     10
+     11	0103  B8 3509				     mov ax, 3509h
+     12	0106  CD 21				     int 21h	     ; get int vector addr: es:bx
+     13
+     14	0108  89 1E 013Fr			     mov Old09Offs, bx
+     15	010C  8C C3				     mov bx, es
+     16	010E  89 1E 0141r			     mov Old09Seg, bx
+     17
+     18	0112  1E				     push ds ; save ds
+     19	0113  BA 012Ar				     mov dx, offset IntOverride09
+     20	0116  0E				     push cs
+     21	0117  1F				     pop ds
+     22	0118  B8 2509				     mov ax, 2509h
+     23	011B  CD 21				     int 21h	     ; set int vector addr: ds:	dx
+     24	011D  1F				     pop ds ; restore ds
+     25
+     26	011E  BA 0143r				     mov dx, offset EndOfProg
+     27	0121  C1 EA 04				     shr dx, 4
+     28	0124  42				     inc dx	     ; sizeof(prog) / 16 + 1
+     29	0125  B8 3100				     mov ax, 3100h
+     30	0128  CD 21				     int 21h
+     31
+     32	012A			     IntOverride09   proc
+     33	012A  50 53 06				     push ax bx	es
+     34
+     35	012D  68 B800				     push 0b800h
+     36	0130  07				     pop es
+     37
+     38	0131  BB 0230				     mov bx, ((80 * 3) + 40) * 2
+     39	0134  B4 4E				     mov ah, 4eh ; color
+     40
+     41	0136  E4 60				     in	al, 60h	; symbol
+     42	0138  26: 89 07				     mov es:[bx], ax
+     43
+     44	013B  07 5B 58				     pop es bx ax
+     45
+     46	013E  EA				     db	0eah ; far jmp
+     47	013F  0000		     Old09Offs	     dw	0
+     48	0141  0000		     Old09Seg	     dw	0
+     49
+     50	0143					     endp
+     51	0143			     EndOfProg:
+     52
+     53				     end	     Start
+Turbo Assembler	 Version 4.1	    02/19/24 22:01:29	    Page 2
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "02/19/24"
+??FILENAME			  Text	 "prog3	  "
+??TIME				  Text	 "22:01:29"
+??VERSION			  Number 040A
+@32BIT				  Text	 0
+@CODE				  Text	 DGROUP
+@CODESIZE			  Text	 0
+@CPU				  Text	 0707H
+@CURSEG				  Text	 _TEXT
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@FILENAME			  Text	 PROG3
+@INTERFACE			  Text	 000H
+@MODEL				  Text	 1
+@STACK				  Text	 DGROUP
+@WORDSIZE			  Text	 2
+ENDOFPROG			  Near	 DGROUP:0143
+INTOVERRIDE09			  Near	 DGROUP:012A
+OLD09OFFS			  Word	 DGROUP:013F
+OLD09SEG			  Word	 DGROUP:0141
+START				  Near	 DGROUP:0100
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  _DATA				  16  0000 Word	  Public  DATA
+  _TEXT				  16  0143 Word	  Public  CODE
+

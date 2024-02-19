@@ -1,0 +1,60 @@
+Turbo Assembler	 Version 4.1	    02/19/24 22:15:39	    Page 1
+prog1.asm
+
+
+
+      1				     .286
+      2	0000			     .model tiny
+      3	0000			     .code
+      4				     org 100h
+      5				     locals @@
+      6
+      7
+      8	0100  68 B800		     Start:	     push 0b800h
+      9	0103  07				     pop es
+     10
+     11	0104  BB 0230				     mov bx, ((80 * 3) + 40) * 2
+     12	0107  B4 4E				     mov ah, 4eh ; color
+     13
+     14	0109  E4 60		     Next:	     in	al, 60h	; symbol
+     15	010B  26: 89 07				     mov es:[bx], ax
+     16
+     17	010E  3C 0E				     cmp al, 0eh ; backspace
+     18	0110  75 F7				     jne Next
+     19
+     20	0112  C3				     ret
+     21
+     22				     end	     Start
+Turbo Assembler	 Version 4.1	    02/19/24 22:15:39	    Page 2
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "02/19/24"
+??FILENAME			  Text	 "prog1	  "
+??TIME				  Text	 "22:15:39"
+??VERSION			  Number 040A
+@32BIT				  Text	 0
+@CODE				  Text	 DGROUP
+@CODESIZE			  Text	 0
+@CPU				  Text	 0707H
+@CURSEG				  Text	 _TEXT
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@FILENAME			  Text	 PROG1
+@INTERFACE			  Text	 000H
+@MODEL				  Text	 1
+@STACK				  Text	 DGROUP
+@WORDSIZE			  Text	 2
+NEXT				  Near	 DGROUP:0109
+START				  Near	 DGROUP:0100
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  _DATA				  16  0000 Word	  Public  DATA
+  _TEXT				  16  0113 Word	  Public  CODE
+
