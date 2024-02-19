@@ -1,0 +1,318 @@
+Turbo Assembler	 Version 4.1	    02/20/24 01:04:59	    Page 1
+prog.asm
+
+
+
+      1				     .286
+      2	0000			     .model tiny
+      3	0000			     .code
+      4				     org 100h
+      5				     locals @@
+      6
+      7	      =0050		     ScreenWidth     equ 80
+      8	      =001A		     ScreenHeight    equ 26
+      9
+     10	      =0020		     Space	     equ ' '
+     11
+     12	      =0008		     FrameBegLine    equ 8
+     13	      =0045		     FrameBegCol     equ 69
+     14
+     15	      =000A		     FrameHeight     equ 10
+     16	      =000A		     FrameWidth	     equ 10
+     17
+     18
+     19	0100  E9 00BC		     Start:	     jmp main
+     20
+     21				     ;--------------------------------------
+     22				     ; Draws frame
+     23				     ; Entry:	     bp	= style	str addr
+     24				     ;		     cl	= width
+     25				     ;		     ch	= height
+     26				     ;		     dh	= color
+     27				     ;
+     28				     ; Assumes:	     es	= 0b800h
+     29				     ; Destr:	     ax, bx, dl
+     30				     ;--------------------------------------
+     31	0103			     DrawFrame	     proc
+     32
+     33	0103  BB 058A				     mov bx, (FrameBegLine * ScreenWidth + FrameBegCol)	* 2
+     34						     ; bx => x = 0; y =	0
+     35
+     36	0106  E8 0056				     call DrawFrameEmptyLine
+     37	0109  81 C3 00A0			     add bx, ScreenWidth * 2
+     38	010D  32 E4				     xor ah, ah
+     39	010F  8A C1				     mov al, cl
+     40	0111  D1 E0				     shl ax, 1	; ax = width * 2
+     41	0113  2B D8				     sub bx, ax	; bx =>	x = 0; y = 1
+     42
+     43						     ; top line
+     44	0115  E8 0067				     call DrawFrameLine
+     45	0118  81 C3 00A0			     add bx, ScreenWidth * 2
+     46	011C  32 E4				     xor ah, ah
+     47	011E  8A C1				     mov al, cl
+     48	0120  D1 E0				     shl ax, 1	; ax = width * 2
+     49	0122  2B D8				     sub bx, ax	; bx =>	x = 0; y = 2
+     50
+     51						     ; middle lines
+     52	0124  83 C5 03				     add bp, 3
+     53
+     54	0127  B8 00A0				     mov ax, ScreenWidth * 2
+     55	012A  F6 E5				     mul ch
+     56	012C  2D 0280				     sub ax, (4	* ScreenWidth) * 2
+     57	012F  03 C3				     add ax, bx
+Turbo Assembler	 Version 4.1	    02/20/24 01:04:59	    Page 2
+prog.asm
+
+
+
+     58
+     59	0131  EB 12 90				     jmp @@DFwhileClause
+     60	0134			     @@DFwhile:
+     61	0134  50				     push ax ; save ax
+     62	0135  E8 0047				     call DrawFrameLine
+     63	0138  81 C3 00A0			     add bx, ScreenWidth * 2
+     64	013C  32 E4				     xor ah, ah
+     65	013E  8A C1				     mov al, cl
+     66	0140  D1 E0				     shl ax, 1
+     67	0142  2B D8				     sub bx, ax
+     68
+     69	0144  58				     pop ax ; restore ax
+     70	0145			     @@DFwhileClause:
+     71	0145  3B D8				     cmp bx, ax
+     72	0147  72 EB				     jb	@@DFwhile
+     73
+     74						     ; bottom line
+     75	0149  83 C5 03				     add bp, 3
+     76
+     77	014C  E8 0030				     call DrawFrameLine
+     78	014F  81 C3 00A0			     add bx, ScreenWidth * 2
+     79	0153  32 E4				     xor ah, ah
+     80	0155  8A C1				     mov al, cl
+     81	0157  D1 E0				     shl ax, 1
+     82	0159  2B D8				     sub bx, ax
+     83
+     84	015B  E8 0001				     call DrawFrameEmptyLine
+     85
+     86	015E  C3				     ret
+     87	015F					     endp
+     88				     ;---------------------------------------
+     89
+     90				     ;--------------------------------------
+     91				     ; Draws one empty line of frame
+     92				     ; DrawFrameEmptyLine
+     93				     ; Entry:	     bx	= line beginning symbol	addr
+     94				     ;		     cl	= width
+     95				     ;		     ch	= height
+     96				     ;		     dh	= color
+     97				     ;
+     98				     ; Assumes:	     es	= 0b800h
+     99				     ;
+    100				     ; Destr:	     ax, dl
+    101				     ; Return:	     bx	= symbol after the last	symbol in the line
+    102				     ;-------------------------------------
+    103
+    104	015F			     DrawFrameEmptyLine	     proc
+    105
+    106	015F  B2 20				     mov dl, Space
+    107
+    108	0161  26: 89 17				     mov es:[bx], dx
+    109	0164  83 C3 02				     add bx, 2
+    110
+    111	0167  33 C0				     xor ax, ax
+    112	0169  8A C1				     mov al, cl
+    113	016B  2C 01				     sub al, 1
+    114	016D  D1 E0				     shl ax, 1
+Turbo Assembler	 Version 4.1	    02/20/24 01:04:59	    Page 3
+prog.asm
+
+
+
+    115	016F  03 C3				     add ax, bx
+    116
+    117	0171  EB 07 90				     jmp @@DFLEwhileClause
+    118	0174			     @@DFLEwhile:
+    119	0174  26: 89 17				     mov es:[bx], dx
+    120	0177  83 C3 02				     add bx, 2
+    121
+    122	017A			     @@DFLEwhileClause:
+    123	017A  3B D8				     cmp bx, ax
+    124	017C  72 F6				     jb	@@DFLEwhile
+    125
+    126	017E  C3				     ret
+    127	017F					     endp
+    128				     ;--------------------------------------
+    129
+    130				     ;--------------------------------------
+    131				     ; Draws one line of fram (1 symbol	+ n symbols + 1	symbol)
+    132				     ; DrawDrameLine
+    133				     ; Entry:	     bp	= style	str addr
+    134				     ;		     bx	= line beginning symbol	addr
+    135				     ;		     cl	= width
+    136				     ;		     ch	= height
+    137				     ;		     dh	= color
+    138				     ;
+    139				     ; Assumes:	     es	= 0b800h
+    140				     ;		     ds	allows to reach	style_str
+    141				     ;
+    142				     ; Destr:	     ax, dl
+    143				     ; Return:	     bx	= symbol after the last	symbol in the line
+    144				     ;-------------------------------------
+    145
+    146	017F			     DrawFrameLine   proc
+    147
+    148						     ; write empty symbol
+    149	017F  B2 20				     mov dl, Space
+    150	0181  26: 89 17				     mov es:[bx], dx
+    151	0184  83 C3 02				     add bx, 2
+    152
+    153						     ; write left symbol
+    154	0187  2E: 8A 56	00			     mov dl, cs:[bp]
+    155	018B  26: 89 17				     mov es:[bx], dx
+    156	018E  83 C3 02				     add bx, 2
+    157
+    158	0191  2E: 8A 56	01			     mov dl, cs:[bp + 1]
+    159
+    160
+    161	0195  33 C0				     xor ax, ax
+    162	0197  8A C1				     mov al, cl
+    163	0199  2C 04				     sub al, 2 * 2
+    164	019B  D1 E0				     shl ax, 1
+    165	019D  03 C3				     add ax, bx
+    166
+    167	019F  EB 07 90				     jmp @@DFLwhileClause
+    168	01A2			     @@DFLwhile:
+    169	01A2  26: 89 17				     mov es:[bx], dx
+    170	01A5  83 C3 02				     add bx, 2
+    171
+Turbo Assembler	 Version 4.1	    02/20/24 01:04:59	    Page 4
+prog.asm
+
+
+
+    172	01A8			     @@DFLwhileClause:
+    173	01A8  3B D8				     cmp bx, ax
+    174	01AA  72 F6				     jb	@@DFLwhile
+    175
+    176						     ; write right symbol
+    177	01AC  2E: 8A 56	02			     mov dl, cs:[bp + 2]
+    178	01B0  26: 89 17				     mov es:[bx], dx
+    179	01B3  83 C3 02				     add bx, 2
+    180
+    181						     ; write empty symbol
+    182	01B6  B2 20				     mov dl, Space
+    183	01B8  26: 89 17				     mov es:[bx], dx
+    184	01BB  83 C3 02				     add bx, 2
+    185
+    186	01BE  C3				     ret
+    187	01BF					     endp
+    188				     ;--------------------------------------
+    189
+    190	01BF  6A 00		     main:	     push 0
+    191	01C1  07				     pop es
+    192
+    193	01C2  B8 3509				     mov ax, 3509h
+    194	01C5  CD 21				     int 21h	     ; get int vector addr: es:bx
+    195
+    196	01C7  89 1E 0206r			     mov Old09Offs, bx
+    197	01CB  8C C3				     mov bx, es
+    198	01CD  89 1E 0208r			     mov Old09Seg, bx
+    199
+    200	01D1  1E				     push ds ; save ds
+    201	01D2  BA 01E9r				     mov dx, offset IntOverride09
+    202	01D5  0E				     push cs
+    203	01D6  1F				     pop ds
+    204	01D7  B8 2509				     mov ax, 2509h
+    205	01DA  CD 21				     int 21h	     ; set int vector addr: ds:	dx
+    206	01DC  1F				     pop ds ; restore ds
+    207
+    208	01DD  BA 0213r				     mov dx, offset EndOfProg
+    209	01E0  C1 EA 04				     shr dx, 4
+    210	01E3  42				     inc dx	     ; sizeof(prog) / 16 + 1
+    211	01E4  B8 3100				     mov ax, 3100h
+    212	01E7  CD 21				     int 21h
+    213
+    214	01E9			     IntOverride09   proc
+    215	01E9  50 53 51 52 06 55			     push ax bx	cx dx es bp
+    216
+    217	01EF  68 B800				     push 0b800h
+    218	01F2  07				     pop es
+    219
+    220	01F3  68 020Ar				     push offset FrameStyle
+    221	01F6  5D				     pop bp
+    222	01F7  B9 0A0A				     mov cx, FrameHeight * 100h	+ FrameWidth
+    223	01FA  B6 4E				     mov dh, 4eh     ; color
+    224	01FC  E8 FF04				     call DrawFrame
+    225
+    226	01FF  5D 07 5A 59 5B 58			     pop bp es dx cx bx	ax
+    227
+    228	0205  EA				     db	0eah ; far jmp
+Turbo Assembler	 Version 4.1	    02/20/24 01:04:59	    Page 5
+prog.asm
+
+
+
+    229	0206  0000		     Old09Offs	     dw	0
+    230	0208  0000		     Old09Seg	     dw	0
+    231
+    232	020A					     endp
+    233
+    234	020A  DA C4 BF B3 20 B3	C0+  FrameStyle	db 0dah, 0c4h, 0bfh, 0b3h, Space, 0b3h,	0c0h, 0c4h, 0d9h ; single frame
+    235	      C4 D9
+    236
+    237	0213			     EndOfProg:
+    238
+    239				     end	     Start
+Turbo Assembler	 Version 4.1	    02/20/24 01:04:59	    Page 6
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "02/20/24"
+??FILENAME			  Text	 "prog	  "
+??TIME				  Text	 "01:04:59"
+??VERSION			  Number 040A
+@32BIT				  Text	 0
+@@DFLEWHILE			  Near	 DGROUP:0174
+@@DFLEWHILECLAUSE		  Near	 DGROUP:017A
+@@DFLWHILE			  Near	 DGROUP:01A2
+@@DFLWHILECLAUSE		  Near	 DGROUP:01A8
+@@DFWHILE			  Near	 DGROUP:0134
+@@DFWHILECLAUSE			  Near	 DGROUP:0145
+@CODE				  Text	 DGROUP
+@CODESIZE			  Text	 0
+@CPU				  Text	 0707H
+@CURSEG				  Text	 _TEXT
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@FILENAME			  Text	 PROG
+@INTERFACE			  Text	 000H
+@MODEL				  Text	 1
+@STACK				  Text	 DGROUP
+@WORDSIZE			  Text	 2
+DRAWFRAME			  Near	 DGROUP:0103
+DRAWFRAMEEMPTYLINE		  Near	 DGROUP:015F
+DRAWFRAMELINE			  Near	 DGROUP:017F
+ENDOFPROG			  Near	 DGROUP:0213
+FRAMEBEGCOL			  Number 0045
+FRAMEBEGLINE			  Number 0008
+FRAMEHEIGHT			  Number 000A
+FRAMESTYLE			  Byte	 DGROUP:020A
+FRAMEWIDTH			  Number 000A
+INTOVERRIDE09			  Near	 DGROUP:01E9
+MAIN				  Near	 DGROUP:01BF
+OLD09OFFS			  Word	 DGROUP:0206
+OLD09SEG			  Word	 DGROUP:0208
+SCREENHEIGHT			  Number 001A
+SCREENWIDTH			  Number 0050
+SPACE				  Number 0020
+START				  Near	 DGROUP:0100
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  _DATA				  16  0000 Word	  Public  DATA
+  _TEXT				  16  0213 Word	  Public  CODE
+
