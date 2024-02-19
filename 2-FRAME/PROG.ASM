@@ -33,7 +33,7 @@ ArgvAddr	equ 0081h
 ;		dh = color
 ;
 ; Assumes:	es = 0b800h
-; Destr:	ax, bx, dh
+; Destr:	ax, bx, dl
 ;--------------------------------------
 DrawFrame	proc
 

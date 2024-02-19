@@ -1,4 +1,4 @@
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 1
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 1
 prog.asm
 
 
@@ -60,7 +60,7 @@ prog.asm
 1    55				     ; byte* cdecl mymemchr(const byte*	s, byte	c, word	n)
 1    56				     ;	     return es:ax;
 1    57				     ;
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 2
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 2
 prog.asm
 
 
@@ -122,7 +122,7 @@ prog.asm
 1   112	0147  8B 7E 04				     mov di, [bp + 4] ;	di = offset s
 1   113
 1   114	014A  8A 46 06				     mov al, [bp + 6] ;	al = c
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 3
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 3
 prog.asm
 
 
@@ -184,7 +184,7 @@ prog.asm
 1   169
 1   170	016E  55				     push bp
 1   171	016F  8B EC				     mov bp, sp
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 4
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 4
 prog.asm
 
 
@@ -246,7 +246,7 @@ prog.asm
 1   226	01A3  8E C0				     mov es, ax	      ;	es = ds
 1   227	01A5  8B 7E 04				     mov di, [bp + 4] ;	di = offset buf1
 1   228	01A8  8B 76 06				     mov si, [bp + 6] ;	si = offset buf2
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 5
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 5
 prog.asm
 
 
@@ -287,7 +287,7 @@ prog.asm
     262				     ;		     dh	= color
     263				     ;
     264				     ; Assumes:	     es	= 0b800h
-    265				     ; Destr:	     ax, bx, dh
+    265				     ; Destr:	     ax, bx, dl
     266				     ;--------------------------------------
     267	01BB			     DrawFrame	     proc
     268
@@ -308,7 +308,7 @@ prog.asm
     283	01D6  8A C1				     mov al, cl
     284	01D8  D1 E0				     shl ax, 1	; ax = width * 2
     285	01DA  2B D8				     sub bx, ax	; bx =>	x = 0; y = 2
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 6
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 6
 prog.asm
 
 
@@ -370,7 +370,7 @@ prog.asm
     340	0217			     DrawFrameEmptyLine	     proc
     341
     342	0217  B2 20				     mov dl, Space
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 7
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 7
 prog.asm
 
 
@@ -432,7 +432,7 @@ prog.asm
     397	024B  33 C0				     xor ax, ax
     398	024D  8A C1				     mov al, cl
     399	024F  2C 04				     sub al, 2 * 2
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 8
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 8
 prog.asm
 
 
@@ -494,7 +494,7 @@ prog.asm
     454
     455	0299			     @@DSVwhileClause:
     456	0299  3B D8				     cmp bx, ax
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 9
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 9
 prog.asm
 
 
@@ -556,7 +556,7 @@ prog.asm
 1   511				     ; Destr:	     ax
 1   512				     ;--------------------------------------
 1   513	02CE			     CheckArgc	     proc
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 10
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 10
 prog.asm
 
 
@@ -618,7 +618,7 @@ prog.asm
 1   568
 1   569	02F8  8A 0F				     mov cl, [bx]
 1   570	02FA  80 E9 30				     sub cl, '0'
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 11
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 11
 prog.asm
 
 
@@ -680,7 +680,7 @@ prog.asm
 1   625
 1   626	0343  C0 E1 04				     shl cl, 4
 1   627
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 12
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 12
 prog.asm
 
 
@@ -742,7 +742,7 @@ prog.asm
 1   682	036C  55				     push bp
 1   683	036D  8B EC				     mov bp, sp
 1   684
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 13
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 13
 prog.asm
 
 
@@ -804,7 +804,7 @@ prog.asm
 1   739	03B4			     @@DefinedStyle:
 1   740	03B4  B0 09				     mov al, 9
 1   741	03B6  8A 27				     mov ah, [bx]
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 14
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 14
 prog.asm
 
 
@@ -866,7 +866,7 @@ prog.asm
 1   796	03F6  83 C4 06				     add sp, 6
 1   797	03F9  07				     pop es
 1   798
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 15
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 15
 prog.asm
 
 
@@ -928,7 +928,7 @@ prog.asm
 1   853				     ;--------------------------------------
 1   854	0435			     ModSymbol	     proc
 1   855
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 16
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 16
 prog.asm
 
 
@@ -990,7 +990,7 @@ prog.asm
 1   910	045A			     PrintText	     proc
 1   911
 1   912	045A  55				     push bp
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 17
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 17
 prog.asm
 
 
@@ -1052,7 +1052,7 @@ prog.asm
 1   967
 1   968	0498  55				     push bp
 1   969	0499  8B EC				     mov bp, sp
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 18
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 18
 prog.asm
 
 
@@ -1114,7 +1114,7 @@ prog.asm
    1024	04E1  8D 46 FA				     lea ax, [bp - 6]
    1025	04E4  50				     push ax
    1026	04E5  E8 FEA8				     call GetStyle
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 19
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 19
 prog.asm
 
 
@@ -1176,7 +1176,7 @@ prog.asm
    1081	0561  4E 6F 74 20 65 6E	6F+  ErrNotEnoughArgsStr db "Not enough	arguments$"
    1082	      75 67 68 20 61 72	67+
    1083	      75 6D 65 6E 74 73	24
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 20
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 20
 prog.asm
 
 
@@ -1186,7 +1186,7 @@ prog.asm
    1086
    1087
    1088				     end	     Start
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 21
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 21
 Symbol Table
 
 
@@ -1196,7 +1196,7 @@ Symbol Name			  Type	 Value
 
 ??DATE				  Text	 "02/20/24"
 ??FILENAME			  Text	 "prog	  "
-??TIME				  Text	 "00:22:16"
+??TIME				  Text	 "00:42:03"
 ??VERSION			  Number 040A
 @32BIT				  Text	 0
 @@CHDELSE			  Near	 DGROUP:0369
@@ -1248,7 +1248,7 @@ ARGCADDR			  Number 0080
 ARGVADDR			  Number 0081
 CHECKARGC			  Near	 DGROUP:02CE
 CONVERTHEXDIGIT			  Near	 DGROUP:034F
-Turbo Assembler	 Version 4.1	    02/20/24 00:22:16	    Page 22
+Turbo Assembler	 Version 4.1	    02/20/24 00:42:04	    Page 22
 Symbol Table
 
 
