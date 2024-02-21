@@ -4,19 +4,28 @@
 org 100h
 locals @@
 
+Start:		jmp main
+
 ScreenWidth	equ 80
 ScreenHeight	equ 26
+
+RegsNum		equ 5 			; regs list config
+RegsNames 	db "axbxcxdxsp"
+RegsPush	equ sp dx cx bx ax
+
+F12pushKeycode		equ 58h
+F12releaseKeycode	equ F12pushKeycode + 128
+
+HotKeyOpenKeycode 	equ F12pushKeycode
+HotKeyCloseKeycode 	equ F12releaseKeycode
 
 Space		equ ' '
 
 FrameBegLine	equ 8
-FrameBegCol	equ 69
+FrameBegCol	equ 67
 
-FrameHeight	equ 10
-FrameWidth	equ 10
-
-
-Start:		jmp main
+FrameHeight	equ RegsNum + 4
+FrameWidth	equ 12
 
 ;--------------------------------------
 ; Draws frame
@@ -187,11 +196,25 @@ DrawFrameLine	proc
 		endp
 ;--------------------------------------
 
-main:		push 0
-		pop es
+main:		; timer - IRQ0
+		mov ax, 3508h
+		int 21h		; get int vector addr in es:bx
 
+		mov Old08Offs, bx
+		mov bx, es
+		mov Old08Seg, bx
+
+		push ds ; save ds
+		mov dx, offset IntOverride08
+		push cs
+		pop ds
+		mov ax, 2508h
+		int 21h		; set int vector addr from ds: dx
+		pop ds ; restore ds
+
+		; keybord - IRQ1
 		mov ax, 3509h
-		int 21h		; get int vector addr: es:bx
+		int 21h		; get int vector addr in es:bx
 
 		mov Old09Offs, bx
 		mov bx, es
@@ -202,17 +225,105 @@ main:		push 0
 		push cs
 		pop ds
 		mov ax, 2509h
-		int 21h		; set int vector addr: ds: dx
+		int 21h		; set int vector addr from ds: dx
 		pop ds ; restore ds
 
+		; stay resident
 		mov dx, offset EndOfProg
 		shr dx, 4
 		inc dx 		; sizeof(prog) / 16 + 1
 		mov ax, 3100h
 		int 21h
 
-IntOverride09	proc
+IntOverride08	proc
+
+		cmp cs:PopupCnt, 0
+		je @@IO08noneLong
+
+		inc cs:PopupCnt
+		cmp cs:PopupCnt, 5
+		jb @@IO08noneLong
+
+		mov cs:PopupCnt, 1
+
 		push ax bx cx dx es bp
+		push RegsPush
+
+		push 0b800h
+		pop es
+
+		mov bp, (ScreenWidth * (FrameBegLine + 2) + (FrameBegCol + 2) + 3) * 2
+
+		; printing
+
+		mov cx, RegsNum
+		jmp @@IO08forClause
+
+@@IO08noneLong: jmp @@IO08none
+
+@@IO08forBegin: dec cx
+		pop ax
+
+		mov bx, ax
+		;and bx, 0f000h
+		shr bx, 16 - 4
+		mov bl, cs:[offset HexTable + bx]
+		mov byte ptr es:[bp], bl
+		add bp, 2
+
+		mov bx, ax
+		and bx, 00f00h
+		shr bx, 16 - 8
+		mov bl, cs:[offset HexTable + bx]
+		mov byte ptr es:[bp], bl
+		add bp, 2
+
+		mov byte ptr es:[bp], ':'
+		add bp, 2
+
+		mov bx, ax
+		and bx, 000f0h
+		shr bx, 16 - 12
+		mov bl, cs:[offset HexTable + bx]
+		mov byte ptr es:[bp], bl
+		add bp, 2
+
+		mov bx, ax
+		and bx, 0000fh
+		;shr bx, 16 - 16
+		mov bl, cs:[offset HexTable + bx]
+		mov byte ptr es:[bp], bl
+
+		add bp, (ScreenWidth - 4) * 2
+
+@@IO08forClause:
+		cmp cx, 0
+		ja @@IO08forBegin
+
+		pop bp es dx cx bx ax
+@@IO08none:
+		db 0eah ; far jmp
+Old08Offs	dw 0
+Old08Seg	dw 0
+
+		endp
+
+
+IntOverride09	proc
+
+		push ax
+
+		in al, 60h
+		cmp al, HotKeyOpenKeycode
+		jne @@IO09elseif
+
+		cmp cs:PopupCnt, 0
+		jne @@IO09endif
+
+		; enable frame and draw it
+		mov cs:PopupCnt, 1
+
+		push bx cx dx es bp
 
 		push 0b800h
 		pop es
@@ -223,7 +334,36 @@ IntOverride09	proc
 		mov dh, 4eh	; color
 		call DrawFrame
 
-		pop bp es dx cx bx ax
+
+		mov bp, (ScreenWidth * (FrameBegLine + 2) + (FrameBegCol + 2)) * 2
+
+		mov bx, 0
+		jmp @@IO09forClause
+@@IO09forBegin:
+		mov cl, cs:[offset RegsNames + bx]
+		mov byte ptr es:[bp], cl
+		add bp, 2
+
+		mov cl, cs:[offset RegsNames + bx + 1]
+		mov byte ptr es:[bp], cl
+
+		add bp, (ScreenWidth - 1) * 2
+
+		add bx, 2
+@@IO09forClause:
+		cmp bx, RegsNum * 2
+		jb @@IO09forBegin
+
+		pop bp es dx cx bx
+
+		jmp @@IO09endif
+
+@@IO09elseif:	cmp al, HotKeyCloseKeycode
+		jne @@IO09endif
+
+		mov cs:PopupCnt, 0
+@@IO09endif:
+		pop ax
 
 		db 0eah ; far jmp
 Old09Offs	dw 0
@@ -231,9 +371,13 @@ Old09Seg	dw 0
 
 		endp
 
-FrameStyle db 0dah, 0c4h, 0bfh, 0b3h, Space, 0b3h, 0c0h, 0c4h, 0d9h ; single frame
+
+PopupCnt	db 0 ; 0 - off; >0 - on
+
+FrameStyle 	db 0dah, 0c4h, 0bfh, 0b3h, Space, 0b3h, 0c0h, 0c4h, 0d9h ; single frame
+
+HexTable	db "0123456789ABCDEF"
 
 EndOfProg:
 
 end		Start
-
