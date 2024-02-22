@@ -27,53 +27,42 @@ FrameBegCol	equ 67
 FrameHeight	equ RegsNum + 4
 FrameWidth	equ 12
 
+FrameSize	equ FrameHeight * FrameWidth
+
 ;--------------------------------------
 ; Draws frame
-; Entry:	bp = style str addr
-;		cl = width
-;		ch = height
-;		dh = color
 ;
 ; Assumes:	es = 0b800h
-; Destr:	ax, bx, dl
+; Destr:	ax, bx, cx, dx, si, bp
 ;--------------------------------------
 DrawFrame	proc
+
+		mov bp, offset FrameStyle
+		mov dh, 4eh ; color
+		mov si, offset MemBuffer
 
 		mov bx, (FrameBegLine * ScreenWidth + FrameBegCol) * 2
 		; bx => x = 0; y = 0
 
 		call DrawFrameEmptyLine
-		add bx, ScreenWidth * 2
-		xor ah, ah
-		mov al, cl
-		shl ax, 1  ; ax = width * 2
-		sub bx, ax ; bx => x = 0; y = 1
+		add bx, (ScreenWidth - FrameWidth) * 2
 
 		; top line
 		call DrawFrameLine
-		add bx, ScreenWidth * 2
-		xor ah, ah
-		mov al, cl
-		shl ax, 1  ; ax = width * 2
-		sub bx, ax ; bx => x = 0; y = 2
+		add bx, (ScreenWidth - FrameWidth) * 2
+
 
 		; middle lines
 		add bp, 3
 
-		mov ax, ScreenWidth * 2
-		mul ch
-		sub ax, (4 * ScreenWidth) * 2
+		mov ax, (ScreenWidth * FrameHeight) * 2 - (4 * ScreenWidth) * 2
 		add ax, bx
 
 		jmp @@DFwhileClause
 @@DFwhile:
 		push ax ; save ax
 		call DrawFrameLine
-		add bx, ScreenWidth * 2
-		xor ah, ah
-		mov al, cl
-		shl ax, 1
-		sub bx, ax
+		add bx, (ScreenWidth - FrameWidth) * 2
 
 		pop ax ; restore ax
 @@DFwhileClause:
@@ -84,13 +73,35 @@ DrawFrame	proc
 		add bp, 3
 
 		call DrawFrameLine
-		add bx, ScreenWidth * 2
-		xor ah, ah
-		mov al, cl
-		shl ax, 1
-		sub bx, ax
+		add bx, (ScreenWidth - FrameWidth) * 2
 
 		call DrawFrameEmptyLine
+
+
+		; print regs names
+		mov bp, (ScreenWidth * (FrameBegLine + 2) + (FrameBegCol + 2)) * 2
+		mov si, offset MemBuffer + FrameSize * 2 + (FrameWidth * 2 + 2) * 2
+
+		mov bx, 0
+		jmp @@DFforClause
+@@DFforBegin:
+		mov cl, cs:[offset RegsNames + bx]
+		mov byte ptr es:[bp], cl
+		mov byte ptr cs:[si], cl
+		add bp, 2
+		add si, 2
+
+		mov cl, cs:[offset RegsNames + bx + 1]
+		mov byte ptr es:[bp], cl
+		mov byte ptr cs:[si], cl
+
+		add bp, (ScreenWidth - 1) * 2
+		add si, (FrameWidth - 2 + 1) * 2
+
+		add bx, 2
+@@DFforClause:
+		cmp bx, RegsNum * 2
+		jb @@DFforBegin
 
 		ret
 		endp
@@ -100,33 +111,32 @@ DrawFrame	proc
 ; Draws one empty line of frame
 ; DrawFrameEmptyLine
 ; Entry:	bx = line beginning symbol addr
-;		cl = width
-;		ch = height
+;		si = position in mem buf
 ;		dh = color
 ;
 ; Assumes:	es = 0b800h
 ;
-; Destr:	ax, dl
+; Destr:	ax, cx, dl
 ; Return:	bx = symbol after the last symbol in the line
+;		si = symbol after the last symbol in mem buf
 ;-------------------------------------
 
 DrawFrameEmptyLine	proc
 
 		mov dl, Space
 
-		mov es:[bx], dx
-		add bx, 2
-
-		xor ax, ax
-		mov al, cl
-		sub al, 1
-		shl ax, 1
+		mov ax, FrameWidth * 2
 		add ax, bx
 
 		jmp @@DFLEwhileClause
 @@DFLEwhile:
+		mov cx, es:[bx]
+		mov cs:[si], cx
+
 		mov es:[bx], dx
+		mov cs:[si + FrameSize * 2], dx
 		add bx, 2
+		add si, 2
 
 @@DFLEwhileClause:
 		cmp bx, ax
@@ -141,42 +151,50 @@ DrawFrameEmptyLine	proc
 ; DrawDrameLine
 ; Entry:	bp = style str addr
 ;		bx = line beginning symbol addr
-;		cl = width
-;		ch = height
+;		si = position in mem buf
 ;		dh = color
 ;
 ; Assumes:	es = 0b800h
 ;		ds allows to reach style_str
 ;
-; Destr:	ax, dl
+; Destr:	ax, cx, dl
 ; Return:	bx = symbol after the last symbol in the line
+;		si = symbol after the last symbol in mem buf
 ;-------------------------------------
 
 DrawFrameLine	proc
 
 		; write empty symbol
 		mov dl, Space
+		mov cx, es:[bx]
+		mov cs:[si], cx
 		mov es:[bx], dx
+		mov cs:[si + FrameSize * 2], dx
 		add bx, 2
+		add si, 2
 
 		; write left symbol
 		mov dl, cs:[bp]
+		mov cx, es:[bx]
+		mov cs:[si], cx
 		mov es:[bx], dx
+		mov cs:[si + FrameSize * 2], dx
 		add bx, 2
+		add si, 2
 
 		mov dl, cs:[bp + 1]
 
-
-		xor ax, ax
-		mov al, cl
-		sub al, 2 * 2
-		shl ax, 1
+		mov ax, (FrameWidth - 2 * 2) * 2
 		add ax, bx
 
 		jmp @@DFLwhileClause
 @@DFLwhile:
+		mov cx, es:[bx]
+		mov cs:[si], cx
 		mov es:[bx], dx
+		mov cs:[si + FrameSize * 2], dx
 		add bx, 2
+		add si, 2
 
 @@DFLwhileClause:
 		cmp bx, ax
@@ -184,17 +202,115 @@ DrawFrameLine	proc
 
 		; write right symbol
 		mov dl, cs:[bp + 2]
+		mov cx, es:[bx]
+		mov cs:[si], cx
 		mov es:[bx], dx
+		mov cs:[si + FrameSize * 2], dx
 		add bx, 2
+		add si, 2
 
 		; write empty symbol
 		mov dl, Space
+		mov cx, es:[bx]
+		mov cs:[si], cx
 		mov es:[bx], dx
+		mov cs:[si + FrameSize * 2], dx
 		add bx, 2
+		add si, 2
 
 		ret
 		endp
 ;--------------------------------------
+
+;--------------------------------------
+; Restores data from buf to videomem
+;
+; Assumes:	es = 0b800h
+; Destr:	ax, bx, cx, dx, si
+;--------------------------------------
+RestoreFromBuf	proc
+
+		mov si, offset MemBuffer
+
+		mov bx, (FrameBegLine * ScreenWidth + FrameBegCol) * 2
+
+		mov ax, FrameHeight
+		jmp @@RFBforLinesClause
+@@RFBforLinesBegin:
+
+		mov cx, FrameWidth
+		jmp @@RFBforColsClause
+@@RFBforColsBegin:
+
+		mov dx, cs:[si]
+		mov es:[bx], dx
+
+		add bx, 2
+		add si, 2
+
+		dec cx
+@@RFBforColsClause:
+		cmp cx, 0
+		ja @@RFBforColsBegin
+
+		add bx, (ScreenWidth - FrameWidth) * 2
+
+		dec ax
+@@RFBforLinesClause:
+		cmp ax, 0
+		ja @@RFBforLinesBegin
+
+		ret
+		endp
+;---------------------------------------
+
+;--------------------------------------
+; Check if something has changed frame
+;
+; Assumes:	es = 0b800h
+; Destr:	ax, bx, cx, dx, si
+;--------------------------------------
+CheckIfChanged	proc
+
+		mov si, offset MemBuffer
+
+		mov bx, (FrameBegLine * ScreenWidth + FrameBegCol) * 2
+
+		mov ax, FrameHeight
+		jmp @@CICforLinesClause
+@@CICforLinesBegin:
+
+		mov cx, FrameWidth
+		jmp @@CICforColsClause
+@@CICforColsBegin:
+
+		mov dx, es:[bx]
+		cmp cs:[FrameSize * 2 + si], dx
+		je @@CICnothingChanged
+
+		mov cs:[si], dx
+		mov dx, cs:[FrameSize * 2 + si]
+		mov es:[bx], dx
+
+@@CICnothingChanged:
+		add bx, 2
+		add si, 2
+
+		dec cx
+@@CICforColsClause:
+		cmp cx, 0
+		ja @@CICforColsBegin
+
+		add bx, (ScreenWidth - FrameWidth) * 2
+
+		dec ax
+@@CICforLinesClause:
+		cmp ax, 0
+		ja @@CICforLinesBegin
+
+		ret
+		endp
+;---------------------------------------
 
 main:		; timer - IRQ0
 		mov ax, 3508h
@@ -240,21 +356,36 @@ IntOverride08	proc
 		cmp cs:PopupCnt, 0
 		je @@IO08noneLong
 
+		cmp cs:PopupCnt, 1
+		jne @@IO08isAlreadyInit
+
+		push ax bx cx dx si es bp
+
+		push 0b800h
+		pop es
+
+		call DrawFrame
+
+		pop bp es si dx cx bx ax
+
+@@IO08isAlreadyInit:
 		inc cs:PopupCnt
-		cmp cs:PopupCnt, 5
+		cmp cs:PopupCnt, 6
 		jb @@IO08noneLong
 
-		mov cs:PopupCnt, 1
+		mov cs:PopupCnt, 2
 
-		push ax bx cx dx es bp
+		push ax bx cx dx si es bp
 		push RegsPush
 
 		push 0b800h
 		pop es
 
-		mov bp, (ScreenWidth * (FrameBegLine + 2) + (FrameBegCol + 2) + 3) * 2
+		call CheckIfChanged
 
-		; printing
+		; printing regs values
+		mov bp, (ScreenWidth * (FrameBegLine + 2) + (FrameBegCol + 2) + 3) * 2
+		mov si, offset MemBuffer + FrameSize * 2 + (FrameWidth * 2 + 5) * 2
 
 		mov cx, RegsNum
 		jmp @@IO08forClause
@@ -269,38 +400,48 @@ IntOverride08	proc
 		shr bx, 16 - 4
 		mov bl, cs:[offset HexTable + bx]
 		mov byte ptr es:[bp], bl
+		mov byte ptr cs:[si], bl
 		add bp, 2
+		add si, 2
 
 		mov bx, ax
 		and bx, 00f00h
 		shr bx, 16 - 8
 		mov bl, cs:[offset HexTable + bx]
 		mov byte ptr es:[bp], bl
+		mov byte ptr cs:[si], bl
 		add bp, 2
+		add si, 2
 
 		mov byte ptr es:[bp], ':'
+		mov byte ptr cs:[si], ':'
 		add bp, 2
+		add si, 2
 
 		mov bx, ax
 		and bx, 000f0h
 		shr bx, 16 - 12
 		mov bl, cs:[offset HexTable + bx]
 		mov byte ptr es:[bp], bl
+		mov byte ptr cs:[si], bl
 		add bp, 2
+		add si, 2
 
 		mov bx, ax
 		and bx, 0000fh
 		;shr bx, 16 - 16
 		mov bl, cs:[offset HexTable + bx]
 		mov byte ptr es:[bp], bl
+		mov byte ptr cs:[si], bl
 
 		add bp, (ScreenWidth - 4) * 2
+		add si, (FrameWidth - 5 + 1) * 2
 
 @@IO08forClause:
 		cmp cx, 0
 		ja @@IO08forBegin
 
-		pop bp es dx cx bx ax
+		pop bp es si dx cx bx ax
 @@IO08none:
 		db 0eah ; far jmp
 Old08Offs	dw 0
@@ -323,45 +464,18 @@ IntOverride09	proc
 		; enable frame and draw it
 		mov cs:PopupCnt, 1
 
-		push bx cx dx es bp
-
-		push 0b800h
-		pop es
-
-		push offset FrameStyle
-		pop bp
-		mov cx, FrameHeight * 100h + FrameWidth
-		mov dh, 4eh	; color
-		call DrawFrame
-
-
-		mov bp, (ScreenWidth * (FrameBegLine + 2) + (FrameBegCol + 2)) * 2
-
-		mov bx, 0
-		jmp @@IO09forClause
-@@IO09forBegin:
-		mov cl, cs:[offset RegsNames + bx]
-		mov byte ptr es:[bp], cl
-		add bp, 2
-
-		mov cl, cs:[offset RegsNames + bx + 1]
-		mov byte ptr es:[bp], cl
-
-		add bp, (ScreenWidth - 1) * 2
-
-		add bx, 2
-@@IO09forClause:
-		cmp bx, RegsNum * 2
-		jb @@IO09forBegin
-
-		pop bp es dx cx bx
-
 		jmp @@IO09endif
 
 @@IO09elseif:	cmp al, HotKeyCloseKeycode
 		jne @@IO09endif
 
 		mov cs:PopupCnt, 0
+
+		push bx cx dx es si
+		push 0b800h
+		pop es
+		call RestoreFromBuf
+		pop si es dx cx bx
 @@IO09endif:
 		pop ax
 
@@ -372,11 +486,14 @@ Old09Seg	dw 0
 		endp
 
 
-PopupCnt	db 0 ; 0 - off; >0 - on
+PopupCnt	db 0 ; 0 - off; 1 - on; >= 2 - on and has already been drawn
 
 FrameStyle 	db 0dah, 0c4h, 0bfh, 0b3h, Space, 0b3h, 0c0h, 0c4h, 0d9h ; single frame
 
 HexTable	db "0123456789ABCDEF"
+
+MemBuffer	dw (FrameWidth * FrameHeight * 2) dup(0) ; first  half - old values
+							 ; second half - actual
 
 EndOfProg:
 

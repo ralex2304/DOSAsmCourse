@@ -1,4 +1,4 @@
-Turbo Assembler	 Version 4.1	    02/21/24 24:43:07	    Page 1
+Turbo Assembler	 Version 4.1	    02/23/24 02:16:51	    Page 1
 prog.asm
 
 
@@ -9,422 +9,548 @@ prog.asm
       4				     org 100h
       5				     locals @@
       6
-      7	0100  E9 00C6		     Start:	     jmp main
+      7	0100  E9 0193		     Start:	     jmp main
       8
       9	      =0050		     ScreenWidth     equ 80
      10	      =001A		     ScreenHeight    equ 26
      11
-     12	      =0005		     RegsNum	     equ 5
-     13
-     14	0103  61 78 62 78 63 78	64+  RegsNames	     db	"axbxcxdxsp"
-     15	      78 73 70
-     16	      =	sp dx cx bx ax	     RegsPush	     equ sp dx cx bx ax
-     17
-     18	      =0058		     F12pushKeycode	     equ 58h
-     19	      =00D8		     F12releaseKeycode	     equ F12pushKeycode	+ 128
-     20
-     21				     HotKeyOpenKeycode	     equ F12pushKeycode
-     22				     HotKeyCloseKeycode	     equ F12releaseKeycode
-     23
-     24	      =0020		     Space	     equ ' '
-     25
-     26	      =0008		     FrameBegLine    equ 8
-     27	      =0043		     FrameBegCol     equ 67
-     28
-     29	      =0009		     FrameHeight     equ RegsNum + 4
-     30	      =000C		     FrameWidth	     equ 12
-     31
-     32				     ;--------------------------------------
-     33				     ; Draws frame
-     34				     ; Entry:	     bp	= style	str addr
-     35				     ;		     cl	= width
-     36				     ;		     ch	= height
-     37				     ;		     dh	= color
-     38				     ;
-     39				     ; Assumes:	     es	= 0b800h
-     40				     ; Destr:	     ax, bx, dl
-     41				     ;--------------------------------------
-     42	010D			     DrawFrame	     proc
-     43
-     44	010D  BB 0586				     mov bx, (FrameBegLine * ScreenWidth + FrameBegCol)	* 2
-     45						     ; bx => x = 0; y =	0
-     46
-     47	0110  E8 0056				     call DrawFrameEmptyLine
-     48	0113  81 C3 00A0			     add bx, ScreenWidth * 2
-     49	0117  32 E4				     xor ah, ah
-     50	0119  8A C1				     mov al, cl
-     51	011B  D1 E0				     shl ax, 1	; ax = width * 2
-     52	011D  2B D8				     sub bx, ax	; bx =>	x = 0; y = 1
-     53
-     54						     ; top line
-     55	011F  E8 0067				     call DrawFrameLine
-     56	0122  81 C3 00A0			     add bx, ScreenWidth * 2
-     57	0126  32 E4				     xor ah, ah
-Turbo Assembler	 Version 4.1	    02/21/24 24:43:07	    Page 2
+     12	      =0005		     RegsNum	     equ 5		     ; regs list config
+     13	0103  61 78 62 78 63 78	64+  RegsNames	     db	"axbxcxdxsp"
+     14	      78 73 70
+     15	      =	sp dx cx bx ax	     RegsPush	     equ sp dx cx bx ax
+     16
+     17	      =0058		     F12pushKeycode	     equ 58h
+     18	      =00D8		     F12releaseKeycode	     equ F12pushKeycode	+ 128
+     19
+     20				     HotKeyOpenKeycode	     equ F12pushKeycode
+     21				     HotKeyCloseKeycode	     equ F12releaseKeycode
+     22
+     23	      =0020		     Space	     equ ' '
+     24
+     25	      =0008		     FrameBegLine    equ 8
+     26	      =0043		     FrameBegCol     equ 67
+     27
+     28	      =0009		     FrameHeight     equ RegsNum + 4
+     29	      =000C		     FrameWidth	     equ 12
+     30
+     31	      =006C		     FrameSize	     equ FrameHeight * FrameWidth
+     32
+     33				     ;--------------------------------------
+     34				     ; Draws frame
+     35				     ;
+     36				     ; Assumes:	     es	= 0b800h
+     37				     ; Destr:	     ax, bx, cx, dx, si, bp
+     38				     ;--------------------------------------
+     39	010D			     DrawFrame	     proc
+     40
+     41	010D  BD 03F6r				     mov bp, offset FrameStyle
+     42	0110  B6 4E				     mov dh, 4eh ; color
+     43	0112  BE 040Fr				     mov si, offset MemBuffer
+     44
+     45	0115  BB 0586				     mov bx, (FrameBegLine * ScreenWidth + FrameBegCol)	* 2
+     46						     ; bx => x = 0; y =	0
+     47
+     48	0118  E8 006A				     call DrawFrameEmptyLine
+     49	011B  81 C3 0088			     add bx, (ScreenWidth - FrameWidth)	* 2
+     50
+     51						     ; top line
+     52	011F  E8 0086				     call DrawFrameLine
+     53	0122  81 C3 0088			     add bx, (ScreenWidth - FrameWidth)	* 2
+     54
+     55
+     56						     ; middle lines
+     57	0126  83 C5 03				     add bp, 3
+Turbo Assembler	 Version 4.1	    02/23/24 02:16:51	    Page 2
 prog.asm
 
 
 
-     58	0128  8A C1				     mov al, cl
-     59	012A  D1 E0				     shl ax, 1	; ax = width * 2
-     60	012C  2B D8				     sub bx, ax	; bx =>	x = 0; y = 2
+     58
+     59	0129  B8 0320				     mov ax, (ScreenWidth * FrameHeight) * 2 - (4 * ScreenWidth) * 2
+     60	012C  03 C3				     add ax, bx
      61
-     62						     ; middle lines
-     63	012E  83 C5 03				     add bp, 3
-     64
-     65	0131  B8 00A0				     mov ax, ScreenWidth * 2
-     66	0134  F6 E5				     mul ch
-     67	0136  2D 0280				     sub ax, (4	* ScreenWidth) * 2
-     68	0139  03 C3				     add ax, bx
-     69
-     70	013B  EB 12 90				     jmp @@DFwhileClause
-     71	013E			     @@DFwhile:
-     72	013E  50				     push ax ; save ax
-     73	013F  E8 0047				     call DrawFrameLine
-     74	0142  81 C3 00A0			     add bx, ScreenWidth * 2
-     75	0146  32 E4				     xor ah, ah
-     76	0148  8A C1				     mov al, cl
-     77	014A  D1 E0				     shl ax, 1
-     78	014C  2B D8				     sub bx, ax
-     79
-     80	014E  58				     pop ax ; restore ax
-     81	014F			     @@DFwhileClause:
-     82	014F  3B D8				     cmp bx, ax
-     83	0151  72 EB				     jb	@@DFwhile
-     84
-     85						     ; bottom line
-     86	0153  83 C5 03				     add bp, 3
-     87
-     88	0156  E8 0030				     call DrawFrameLine
-     89	0159  81 C3 00A0			     add bx, ScreenWidth * 2
-     90	015D  32 E4				     xor ah, ah
-     91	015F  8A C1				     mov al, cl
-     92	0161  D1 E0				     shl ax, 1
-     93	0163  2B D8				     sub bx, ax
+     62	012E  EB 0A 90				     jmp @@DFwhileClause
+     63	0131			     @@DFwhile:
+     64	0131  50				     push ax ; save ax
+     65	0132  E8 0073				     call DrawFrameLine
+     66	0135  81 C3 0088			     add bx, (ScreenWidth - FrameWidth)	* 2
+     67
+     68	0139  58				     pop ax ; restore ax
+     69	013A			     @@DFwhileClause:
+     70	013A  3B D8				     cmp bx, ax
+     71	013C  72 F3				     jb	@@DFwhile
+     72
+     73						     ; bottom line
+     74	013E  83 C5 03				     add bp, 3
+     75
+     76	0141  E8 0064				     call DrawFrameLine
+     77	0144  81 C3 0088			     add bx, (ScreenWidth - FrameWidth)	* 2
+     78
+     79	0148  E8 003A				     call DrawFrameEmptyLine
+     80
+     81
+     82						     ; print regs names
+     83	014B  BD 06CA				     mov bp, (ScreenWidth * (FrameBegLine + 2) + (FrameBegCol +	2)) * 2
+     84	014E  BE 051Br				     mov si, offset MemBuffer +	FrameSize * 2 +	(FrameWidth * 2	+ 2) * 2
+     85
+     86	0151  BB 0000				     mov bx, 0
+     87	0154  EB 29 90				     jmp @@DFforClause
+     88	0157			     @@DFforBegin:
+     89	0157  2E: 8A 8F	0103r			     mov cl, cs:[offset	RegsNames + bx]
+     90	015C  26: 88 4E	00			     mov byte ptr es:[bp], cl
+     91	0160  2E: 88 0C				     mov byte ptr cs:[si], cl
+     92	0163  83 C5 02				     add bp, 2
+     93	0166  83 C6 02				     add si, 2
      94
-     95	0165  E8 0001				     call DrawFrameEmptyLine
-     96
-     97	0168  C3				     ret
-     98	0169					     endp
-     99				     ;---------------------------------------
-    100
-    101				     ;--------------------------------------
-    102				     ; Draws one empty line of frame
-    103				     ; DrawFrameEmptyLine
-    104				     ; Entry:	     bx	= line beginning symbol	addr
-    105				     ;		     cl	= width
-    106				     ;		     ch	= height
-    107				     ;		     dh	= color
-    108				     ;
-    109				     ; Assumes:	     es	= 0b800h
-    110				     ;
-    111				     ; Destr:	     ax, dl
-    112				     ; Return:	     bx	= symbol after the last	symbol in the line
-    113				     ;-------------------------------------
-    114
-Turbo Assembler	 Version 4.1	    02/21/24 24:43:07	    Page 3
+     95	0169  2E: 8A 8F	0104r			     mov cl, cs:[offset	RegsNames + bx + 1]
+     96	016E  26: 88 4E	00			     mov byte ptr es:[bp], cl
+     97	0172  2E: 88 0C				     mov byte ptr cs:[si], cl
+     98
+     99	0175  81 C5 009E			     add bp, (ScreenWidth - 1) * 2
+    100	0179  83 C6 16				     add si, (FrameWidth - 2 + 1) * 2
+    101
+    102	017C  83 C3 02				     add bx, 2
+    103	017F			     @@DFforClause:
+    104	017F  83 FB 0A				     cmp bx, RegsNum * 2
+    105	0182  72 D3				     jb	@@DFforBegin
+    106
+    107	0184  C3				     ret
+    108	0185					     endp
+    109				     ;---------------------------------------
+    110
+    111				     ;--------------------------------------
+    112				     ; Draws one empty line of frame
+    113				     ; DrawFrameEmptyLine
+    114				     ; Entry:	     bx	= line beginning symbol	addr
+Turbo Assembler	 Version 4.1	    02/23/24 02:16:51	    Page 3
 prog.asm
 
 
 
-    115	0169			     DrawFrameEmptyLine	     proc
-    116
-    117	0169  B2 20				     mov dl, Space
-    118
-    119	016B  26: 89 17				     mov es:[bx], dx
-    120	016E  83 C3 02				     add bx, 2
-    121
-    122	0171  33 C0				     xor ax, ax
-    123	0173  8A C1				     mov al, cl
-    124	0175  2C 01				     sub al, 1
-    125	0177  D1 E0				     shl ax, 1
-    126	0179  03 C3				     add ax, bx
-    127
-    128	017B  EB 07 90				     jmp @@DFLEwhileClause
-    129	017E			     @@DFLEwhile:
-    130	017E  26: 89 17				     mov es:[bx], dx
-    131	0181  83 C3 02				     add bx, 2
-    132
-    133	0184			     @@DFLEwhileClause:
-    134	0184  3B D8				     cmp bx, ax
-    135	0186  72 F6				     jb	@@DFLEwhile
+    115				     ;		     si	= position in mem buf
+    116				     ;		     dh	= color
+    117				     ;
+    118				     ; Assumes:	     es	= 0b800h
+    119				     ;
+    120				     ; Destr:	     ax, cx, dl
+    121				     ; Return:	     bx	= symbol after the last	symbol in the line
+    122				     ;		     si	= symbol after the last	symbol in mem buf
+    123				     ;-------------------------------------
+    124
+    125	0185			     DrawFrameEmptyLine	     proc
+    126
+    127	0185  B2 20				     mov dl, Space
+    128
+    129	0187  B8 0018				     mov ax, FrameWidth	* 2
+    130	018A  03 C3				     add ax, bx
+    131
+    132	018C  EB 15 90				     jmp @@DFLEwhileClause
+    133	018F			     @@DFLEwhile:
+    134	018F  26: 8B 0F				     mov cx, es:[bx]
+    135	0192  2E: 89 0C				     mov cs:[si], cx
     136
-    137	0188  C3				     ret
-    138	0189					     endp
-    139				     ;--------------------------------------
-    140
-    141				     ;--------------------------------------
-    142				     ; Draws one line of fram (1 symbol	+ n symbols + 1	symbol)
-    143				     ; DrawDrameLine
-    144				     ; Entry:	     bp	= style	str addr
-    145				     ;		     bx	= line beginning symbol	addr
-    146				     ;		     cl	= width
-    147				     ;		     ch	= height
-    148				     ;		     dh	= color
-    149				     ;
-    150				     ; Assumes:	     es	= 0b800h
-    151				     ;		     ds	allows to reach	style_str
-    152				     ;
-    153				     ; Destr:	     ax, dl
-    154				     ; Return:	     bx	= symbol after the last	symbol in the line
-    155				     ;-------------------------------------
-    156
-    157	0189			     DrawFrameLine   proc
-    158
-    159						     ; write empty symbol
-    160	0189  B2 20				     mov dl, Space
-    161	018B  26: 89 17				     mov es:[bx], dx
-    162	018E  83 C3 02				     add bx, 2
-    163
-    164						     ; write left symbol
-    165	0191  2E: 8A 56	00			     mov dl, cs:[bp]
-    166	0195  26: 89 17				     mov es:[bx], dx
-    167	0198  83 C3 02				     add bx, 2
-    168
-    169	019B  2E: 8A 56	01			     mov dl, cs:[bp + 1]
-    170
-    171
-Turbo Assembler	 Version 4.1	    02/21/24 24:43:07	    Page 4
+    137	0195  26: 89 17				     mov es:[bx], dx
+    138	0198  2E: 89 94	00D8			     mov cs:[si	+ FrameSize * 2], dx
+    139	019D  83 C3 02				     add bx, 2
+    140	01A0  83 C6 02				     add si, 2
+    141
+    142	01A3			     @@DFLEwhileClause:
+    143	01A3  3B D8				     cmp bx, ax
+    144	01A5  72 E8				     jb	@@DFLEwhile
+    145
+    146	01A7  C3				     ret
+    147	01A8					     endp
+    148				     ;--------------------------------------
+    149
+    150				     ;--------------------------------------
+    151				     ; Draws one line of fram (1 symbol	+ n symbols + 1	symbol)
+    152				     ; DrawDrameLine
+    153				     ; Entry:	     bp	= style	str addr
+    154				     ;		     bx	= line beginning symbol	addr
+    155				     ;		     si	= position in mem buf
+    156				     ;		     dh	= color
+    157				     ;
+    158				     ; Assumes:	     es	= 0b800h
+    159				     ;		     ds	allows to reach	style_str
+    160				     ;
+    161				     ; Destr:	     ax, cx, dl
+    162				     ; Return:	     bx	= symbol after the last	symbol in the line
+    163				     ;		     si	= symbol after the last	symbol in mem buf
+    164				     ;-------------------------------------
+    165
+    166	01A8			     DrawFrameLine   proc
+    167
+    168						     ; write empty symbol
+    169	01A8  B2 20				     mov dl, Space
+    170	01AA  26: 8B 0F				     mov cx, es:[bx]
+    171	01AD  2E: 89 0C				     mov cs:[si], cx
+Turbo Assembler	 Version 4.1	    02/23/24 02:16:51	    Page 4
 prog.asm
 
 
 
-    172	019F  33 C0				     xor ax, ax
-    173	01A1  8A C1				     mov al, cl
-    174	01A3  2C 04				     sub al, 2 * 2
-    175	01A5  D1 E0				     shl ax, 1
-    176	01A7  03 C3				     add ax, bx
-    177
-    178	01A9  EB 07 90				     jmp @@DFLwhileClause
-    179	01AC			     @@DFLwhile:
-    180	01AC  26: 89 17				     mov es:[bx], dx
-    181	01AF  83 C3 02				     add bx, 2
-    182
-    183	01B2			     @@DFLwhileClause:
-    184	01B2  3B D8				     cmp bx, ax
-    185	01B4  72 F6				     jb	@@DFLwhile
-    186
-    187						     ; write right symbol
-    188	01B6  2E: 8A 56	02			     mov dl, cs:[bp + 2]
-    189	01BA  26: 89 17				     mov es:[bx], dx
-    190	01BD  83 C3 02				     add bx, 2
-    191
-    192						     ; write empty symbol
-    193	01C0  B2 20				     mov dl, Space
-    194	01C2  26: 89 17				     mov es:[bx], dx
-    195	01C5  83 C3 02				     add bx, 2
-    196
-    197	01C8  C3				     ret
-    198	01C9					     endp
-    199				     ;--------------------------------------
-    200
-    201	01C9			     main:	     ; timer - IRQ0
-    202	01C9  B8 3508				     mov ax, 3508h
-    203	01CC  CD 21				     int 21h	     ; get int vector addr in es:bx
-    204
-    205	01CE  89 1E 02A5r			     mov Old08Offs, bx
-    206	01D2  8C C3				     mov bx, es
-    207	01D4  89 1E 02A7r			     mov Old08Seg, bx
-    208
-    209	01D8  1E				     push ds ; save ds
-    210	01D9  BA 020Br				     mov dx, offset IntOverride08
-    211	01DC  0E				     push cs
-    212	01DD  1F				     pop ds
-    213	01DE  B8 2508				     mov ax, 2508h
-    214	01E1  CD 21				     int 21h	     ; set int vector addr from	ds: dx
-    215	01E3  1F				     pop ds ; restore ds
-    216
-    217						     ; keybord - IRQ1
-    218	01E4  B8 3509				     mov ax, 3509h
-    219	01E7  CD 21				     int 21h	     ; get int vector addr in es:bx
-    220
-    221	01E9  89 1E 0313r			     mov Old09Offs, bx
-    222	01ED  8C C3				     mov bx, es
-    223	01EF  89 1E 0315r			     mov Old09Seg, bx
-    224
-    225	01F3  1E				     push ds ; save ds
-    226	01F4  BA 02A9r				     mov dx, offset IntOverride09
-    227	01F7  0E				     push cs
-    228	01F8  1F				     pop ds
-Turbo Assembler	 Version 4.1	    02/21/24 24:43:07	    Page 5
+    172	01B0  26: 89 17				     mov es:[bx], dx
+    173	01B3  2E: 89 94	00D8			     mov cs:[si	+ FrameSize * 2], dx
+    174	01B8  83 C3 02				     add bx, 2
+    175	01BB  83 C6 02				     add si, 2
+    176
+    177						     ; write left symbol
+    178	01BE  2E: 8A 56	00			     mov dl, cs:[bp]
+    179	01C2  26: 8B 0F				     mov cx, es:[bx]
+    180	01C5  2E: 89 0C				     mov cs:[si], cx
+    181	01C8  26: 89 17				     mov es:[bx], dx
+    182	01CB  2E: 89 94	00D8			     mov cs:[si	+ FrameSize * 2], dx
+    183	01D0  83 C3 02				     add bx, 2
+    184	01D3  83 C6 02				     add si, 2
+    185
+    186	01D6  2E: 8A 56	01			     mov dl, cs:[bp + 1]
+    187
+    188	01DA  B8 0010				     mov ax, (FrameWidth - 2 * 2) * 2
+    189	01DD  03 C3				     add ax, bx
+    190
+    191	01DF  EB 15 90				     jmp @@DFLwhileClause
+    192	01E2			     @@DFLwhile:
+    193	01E2  26: 8B 0F				     mov cx, es:[bx]
+    194	01E5  2E: 89 0C				     mov cs:[si], cx
+    195	01E8  26: 89 17				     mov es:[bx], dx
+    196	01EB  2E: 89 94	00D8			     mov cs:[si	+ FrameSize * 2], dx
+    197	01F0  83 C3 02				     add bx, 2
+    198	01F3  83 C6 02				     add si, 2
+    199
+    200	01F6			     @@DFLwhileClause:
+    201	01F6  3B D8				     cmp bx, ax
+    202	01F8  72 E8				     jb	@@DFLwhile
+    203
+    204						     ; write right symbol
+    205	01FA  2E: 8A 56	02			     mov dl, cs:[bp + 2]
+    206	01FE  26: 8B 0F				     mov cx, es:[bx]
+    207	0201  2E: 89 0C				     mov cs:[si], cx
+    208	0204  26: 89 17				     mov es:[bx], dx
+    209	0207  2E: 89 94	00D8			     mov cs:[si	+ FrameSize * 2], dx
+    210	020C  83 C3 02				     add bx, 2
+    211	020F  83 C6 02				     add si, 2
+    212
+    213						     ; write empty symbol
+    214	0212  B2 20				     mov dl, Space
+    215	0214  26: 8B 0F				     mov cx, es:[bx]
+    216	0217  2E: 89 0C				     mov cs:[si], cx
+    217	021A  26: 89 17				     mov es:[bx], dx
+    218	021D  2E: 89 94	00D8			     mov cs:[si	+ FrameSize * 2], dx
+    219	0222  83 C3 02				     add bx, 2
+    220	0225  83 C6 02				     add si, 2
+    221
+    222	0228  C3				     ret
+    223	0229					     endp
+    224				     ;--------------------------------------
+    225
+    226				     ;--------------------------------------
+    227				     ; Restores	data from buf to videomem
+    228				     ;
+Turbo Assembler	 Version 4.1	    02/23/24 02:16:51	    Page 5
 prog.asm
 
 
 
-    229	01F9  B8 2509				     mov ax, 2509h
-    230	01FC  CD 21				     int 21h	     ; set int vector addr from	ds: dx
-    231	01FE  1F				     pop ds ; restore ds
-    232
-    233						     ; stay resident
-    234	01FF  BA 0331r				     mov dx, offset EndOfProg
-    235	0202  C1 EA 04				     shr dx, 4
-    236	0205  42				     inc dx	     ; sizeof(prog) / 16 + 1
-    237	0206  B8 3100				     mov ax, 3100h
-    238	0209  CD 21				     int 21h
-    239
-    240	020B			     IntOverride08   proc
+    229				     ; Assumes:	     es	= 0b800h
+    230				     ; Destr:	     ax, bx, cx, dx, si
+    231				     ;--------------------------------------
+    232	0229			     RestoreFromBuf  proc
+    233
+    234	0229  BE 040Fr				     mov si, offset MemBuffer
+    235
+    236	022C  BB 0586				     mov bx, (FrameBegLine * ScreenWidth + FrameBegCol)	* 2
+    237
+    238	022F  B8 0009				     mov ax, FrameHeight
+    239	0232  EB 1E 90				     jmp @@RFBforLinesClause
+    240	0235			     @@RFBforLinesBegin:
     241
-    242	020B  2E: 80 3E	0317r 00		     cmp cs:PopupCnt, 0
-    243	0211  74 2C				     je	@@IO08noneLong
-    244
-    245	0213  2E: FE 06	0317r			     inc cs:PopupCnt
-    246	0218  2E: 80 3E	0317r 05		     cmp cs:PopupCnt, 5
-    247	021E  72 1F				     jb	@@IO08noneLong
+    242	0235  B9 000C				     mov cx, FrameWidth
+    243	0238  EB 0E 90				     jmp @@RFBforColsClause
+    244	023B			     @@RFBforColsBegin:
+    245
+    246	023B  2E: 8B 14				     mov dx, cs:[si]
+    247	023E  26: 89 17				     mov es:[bx], dx
     248
-    249	0220  2E: C6 06	0317r 01  +		     mov cs:PopupCnt, 1
-    250	      90
+    249	0241  83 C3 02				     add bx, 2
+    250	0244  83 C6 02				     add si, 2
     251
-    252	0227  50 53 51 52 06 55			     push ax bx	cx dx es bp
-    253	022D  54 52 51 53 50			     push RegsPush ; printed values --------------------------------- regs push!!!
-    254
-    255	0232  68 B800				     push 0b800h
-    256	0235  07				     pop es
-    257
-    258	0236  BD 06D0				     mov bp, (ScreenWidth * (FrameBegLine + 2) + (FrameBegCol +	2) + 3)	* 2
-    259
-    260						     ; printing
-    261
-    262	0239  B9 0005				     mov cx, RegsNum
-    263	023C  EB 5B 90				     jmp @@IO08forClause
-    264
-    265	023F  EB 63 90		     @@IO08noneLong: jmp @@IO08none
-    266
-    267	0242  49		     @@IO08forBegin: dec cx
-    268	0243  58				     pop ax
-    269
-    270	0244  8B D8				     mov bx, ax
-    271						     ;and bx, 0f000h
-    272	0246  C1 EB 0C				     shr bx, 16	- 4
-    273	0249  2E: 8A 9F	0321r			     mov bl, cs:[offset	HexTable + bx]
-    274	024E  26: 88 5E	00			     mov byte ptr es:[bp], bl
-    275	0252  83 C5 02				     add bp, 2
-    276
-    277	0255  8B D8				     mov bx, ax
-    278	0257  81 E3 0F00			     and bx, 00f00h
-    279	025B  C1 EB 08				     shr bx, 16	- 8
-    280	025E  2E: 8A 9F	0321r			     mov bl, cs:[offset	HexTable + bx]
-    281	0263  26: 88 5E	00			     mov byte ptr es:[bp], bl
-    282	0267  83 C5 02				     add bp, 2
+    252	0247  49				     dec cx
+    253	0248			     @@RFBforColsClause:
+    254	0248  83 F9 00				     cmp cx, 0
+    255	024B  77 EE				     ja	@@RFBforColsBegin
+    256
+    257	024D  81 C3 0088			     add bx, (ScreenWidth - FrameWidth)	* 2
+    258
+    259	0251  48				     dec ax
+    260	0252			     @@RFBforLinesClause:
+    261	0252  3D 0000				     cmp ax, 0
+    262	0255  77 DE				     ja	@@RFBforLinesBegin
+    263
+    264	0257  C3				     ret
+    265	0258					     endp
+    266				     ;---------------------------------------
+    267
+    268				     ;--------------------------------------
+    269				     ; Check if	something has changed frame
+    270				     ;
+    271				     ; Assumes:	     es	= 0b800h
+    272				     ; Destr:	     ax, bx, cx, dx, si
+    273				     ;--------------------------------------
+    274	0258			     CheckIfChanged  proc
+    275
+    276	0258  BE 040Fr				     mov si, offset MemBuffer
+    277
+    278	025B  BB 0586				     mov bx, (FrameBegLine * ScreenWidth + FrameBegCol)	* 2
+    279
+    280	025E  B8 0009				     mov ax, FrameHeight
+    281	0261  EB 2D 90				     jmp @@CICforLinesClause
+    282	0264			     @@CICforLinesBegin:
     283
-    284	026A  26: C6 46	00 3A			     mov byte ptr es:[bp], ':'
-    285	026F  83 C5 02				     add bp, 2
-Turbo Assembler	 Version 4.1	    02/21/24 24:43:07	    Page 6
+    284	0264  B9 000C				     mov cx, FrameWidth
+    285	0267  EB 1D 90				     jmp @@CICforColsClause
+Turbo Assembler	 Version 4.1	    02/23/24 02:16:51	    Page 6
 prog.asm
 
 
 
-    286
-    287	0272  8B D8				     mov bx, ax
-    288	0274  81 E3 00F0			     and bx, 000f0h
-    289	0278  C1 EB 04				     shr bx, 16	- 12
-    290	027B  2E: 8A 9F	0321r			     mov bl, cs:[offset	HexTable + bx]
-    291	0280  26: 88 5E	00			     mov byte ptr es:[bp], bl
-    292	0284  83 C5 02				     add bp, 2
-    293
-    294	0287  8B D8				     mov bx, ax
-    295	0289  83 E3 0F				     and bx, 0000fh
-    296						     ;shr bx, 16 - 16
-    297	028C  2E: 8A 9F	0321r			     mov bl, cs:[offset	HexTable + bx]
-    298	0291  26: 88 5E	00			     mov byte ptr es:[bp], bl
+    286	026A			     @@CICforColsBegin:
+    287
+    288	026A  26: 8B 17				     mov dx, es:[bx]
+    289	026D  2E: 39 94	00D8			     cmp cs:[FrameSize * 2 + si], dx
+    290	0272  74 0B				     je	@@CICnothingChanged
+    291
+    292	0274  2E: 89 14				     mov cs:[si], dx
+    293	0277  2E: 8B 94	00D8			     mov dx, cs:[FrameSize * 2 + si]
+    294	027C  26: 89 17				     mov es:[bx], dx
+    295
+    296	027F			     @@CICnothingChanged:
+    297	027F  83 C3 02				     add bx, 2
+    298	0282  83 C6 02				     add si, 2
     299
-    300	0295  81 C5 0098			     add bp, (ScreenWidth - 4) * 2
-    301
-    302	0299			     @@IO08forClause:
-    303	0299  83 F9 00				     cmp cx, 0
-    304	029C  77 A4				     ja	@@IO08forBegin
-    305
-    306	029E  5D 07 5A 59 5B 58			     pop bp es dx cx bx	ax
-    307	02A4			     @@IO08none:
-    308	02A4  EA				     db	0eah ; far jmp
-    309	02A5  0000		     Old08Offs	     dw	0
-    310	02A7  0000		     Old08Seg	     dw	0
+    300	0285  49				     dec cx
+    301	0286			     @@CICforColsClause:
+    302	0286  83 F9 00				     cmp cx, 0
+    303	0289  77 DF				     ja	@@CICforColsBegin
+    304
+    305	028B  81 C3 0088			     add bx, (ScreenWidth - FrameWidth)	* 2
+    306
+    307	028F  48				     dec ax
+    308	0290			     @@CICforLinesClause:
+    309	0290  3D 0000				     cmp ax, 0
+    310	0293  77 CF				     ja	@@CICforLinesBegin
     311
-    312	02A9					     endp
-    313
-    314
-    315	02A9			     IntOverride09   proc
-    316
-    317	02A9  50				     push ax
-    318
-    319	02AA  E4 60				     in	al, 60h
-    320	02AC  3C 58				     cmp al, HotKeyOpenKeycode
-    321	02AE  75 56				     jne @@IO09elseif
-    322
-    323	02B0  2E: 80 3E	0317r 00		     cmp cs:PopupCnt, 0
-    324	02B6  75 59				     jne @@IO09endif
-    325
-    326						     ; enable frame and	draw it
-    327	02B8  2E: C6 06	0317r 01  +		     mov cs:PopupCnt, 1
-    328	      90
-    329
-    330	02BF  53 51 52 06 55			     push bx cx	dx es bp
+    312	0295  C3				     ret
+    313	0296					     endp
+    314				     ;---------------------------------------
+    315
+    316	0296			     main:	     ; timer - IRQ0
+    317	0296  B8 3508				     mov ax, 3508h
+    318	0299  CD 21				     int 21h	     ; get int vector addr in es:bx
+    319
+    320	029B  89 1E 03B6r			     mov Old08Offs, bx
+    321	029F  8C C3				     mov bx, es
+    322	02A1  89 1E 03B8r			     mov Old08Seg, bx
+    323
+    324	02A5  1E				     push ds ; save ds
+    325	02A6  BA 02D8r				     mov dx, offset IntOverride08
+    326	02A9  0E				     push cs
+    327	02AA  1F				     pop ds
+    328	02AB  B8 2508				     mov ax, 2508h
+    329	02AE  CD 21				     int 21h	     ; set int vector addr from	ds: dx
+    330	02B0  1F				     pop ds ; restore ds
     331
-    332	02C4  68 B800				     push 0b800h
-    333	02C7  07				     pop es
-    334
-    335	02C8  68 0318r				     push offset FrameStyle
-    336	02CB  5D				     pop bp
-    337	02CC  B9 090C				     mov cx, FrameHeight * 100h	+ FrameWidth
-    338	02CF  B6 4E				     mov dh, 4eh     ; color
-    339	02D1  E8 FE39				     call DrawFrame
-    340
-    341
-    342	02D4  BD 06CA				     mov bp, (ScreenWidth * (FrameBegLine + 2) + (FrameBegCol +	2)) * 2
-Turbo Assembler	 Version 4.1	    02/21/24 24:43:07	    Page 7
+    332						     ; keybord - IRQ1
+    333	02B1  B8 3509				     mov ax, 3509h
+    334	02B4  CD 21				     int 21h	     ; get int vector addr in es:bx
+    335
+    336	02B6  89 1E 03F1r			     mov Old09Offs, bx
+    337	02BA  8C C3				     mov bx, es
+    338	02BC  89 1E 03F3r			     mov Old09Seg, bx
+    339
+    340	02C0  1E				     push ds ; save ds
+    341	02C1  BA 03BAr				     mov dx, offset IntOverride09
+    342	02C4  0E				     push cs
+Turbo Assembler	 Version 4.1	    02/23/24 02:16:51	    Page 7
 prog.asm
 
 
 
-    343
-    344	02D7  BB 0000				     mov bx, 0
-    345	02DA  EB 1D 90				     jmp @@IO09forClause
-    346	02DD			     @@IO09forBegin:
-    347	02DD  2E: 8A 8F	0103r			     mov cl, cs:[offset	RegsNames + bx]
-    348	02E2  26: 88 4E	00			     mov byte ptr es:[bp], cl
-    349	02E6  83 C5 02				     add bp, 2
-    350
-    351	02E9  2E: 8A 8F	0104r			     mov cl, cs:[offset	RegsNames + bx + 1]
-    352	02EE  26: 88 4E	00			     mov byte ptr es:[bp], cl
-    353
-    354	02F2  81 C5 009E			     add bp, (ScreenWidth - 1) * 2
-    355
-    356	02F6  83 C3 02				     add bx, 2
-    357	02F9			     @@IO09forClause:
-    358	02F9  83 FB 0A				     cmp bx, RegsNum * 2
-    359	02FC  72 DF				     jb	@@IO09forBegin
-    360
-    361	02FE  5D 07 5A 59 5B			     pop bp es dx cx bx
+    343	02C5  1F				     pop ds
+    344	02C6  B8 2509				     mov ax, 2509h
+    345	02C9  CD 21				     int 21h	     ; set int vector addr from	ds: dx
+    346	02CB  1F				     pop ds ; restore ds
+    347
+    348						     ; stay resident
+    349	02CC  BA 05BFr				     mov dx, offset EndOfProg
+    350	02CF  C1 EA 04				     shr dx, 4
+    351	02D2  42				     inc dx	     ; sizeof(prog) / 16 + 1
+    352	02D3  B8 3100				     mov ax, 3100h
+    353	02D6  CD 21				     int 21h
+    354
+    355	02D8			     IntOverride08   proc
+    356
+    357	02D8  2E: 80 3E	03F5r 00		     cmp cs:PopupCnt, 0
+    358	02DE  74 50				     je	@@IO08noneLong
+    359
+    360	02E0  2E: 80 3E	03F5r 01		     cmp cs:PopupCnt, 1
+    361	02E6  75 15				     jne @@IO08isAlreadyInit
     362
-    363	0303  EB 0C 90				     jmp @@IO09endif
+    363	02E8  50 53 51 52 56 06	55		     push ax bx	cx dx si es bp
     364
-    365	0306  3C D8		     @@IO09elseif:   cmp al, HotKeyCloseKeycode
-    366	0308  75 07				     jne @@IO09endif
+    365	02EF  68 B800				     push 0b800h
+    366	02F2  07				     pop es
     367
-    368	030A  2E: C6 06	0317r 00  +		     mov cs:PopupCnt, 0
-    369	      90
-    370	0311			     @@IO09endif:
-    371	0311  58				     pop ax
-    372
-    373	0312  EA				     db	0eah ; far jmp
-    374	0313  0000		     Old09Offs	     dw	0
-    375	0315  0000		     Old09Seg	     dw	0
+    368	02F3  E8 FE17				     call DrawFrame
+    369
+    370	02F6  5D 07 5E 5A 59 5B	58		     pop bp es si dx cx	bx ax
+    371
+    372	02FD			     @@IO08isAlreadyInit:
+    373	02FD  2E: FE 06	03F5r			     inc cs:PopupCnt
+    374	0302  2E: 80 3E	03F5r 06		     cmp cs:PopupCnt, 6
+    375	0308  72 26				     jb	@@IO08noneLong
     376
-    377	0317					     endp
-    378
+    377	030A  2E: C6 06	03F5r 02  +		     mov cs:PopupCnt, 2
+    378	      90
     379
-    380	0317  00		     PopupCnt	     db	0 ; 0 -	off; >0	- on
-    381
-    382	0318  DA C4 BF B3 20 B3	C0+  FrameStyle	     db	0dah, 0c4h, 0bfh, 0b3h,	Space, 0b3h, 0c0h, 0c4h, 0d9h ;	single frame
-    383	      C4 D9
-    384
-    385	0321  30 31 32 33 34 35	36+  HexTable	     db	"0123456789ABCDEF"
-    386	      37 38 39 41 42 43	44+
-    387	      45 46
-    388
-    389	0331			     EndOfProg:
-    390
-    391				     end	     Start
-Turbo Assembler	 Version 4.1	    02/21/24 24:43:07	    Page 8
+    380	0311  50 53 51 52 56 06	55		     push ax bx	cx dx si es bp
+    381	0318  54 52 51 53 50			     push RegsPush
+    382
+    383	031D  68 B800				     push 0b800h
+    384	0320  07				     pop es
+    385
+    386	0321  E8 FF34				     call CheckIfChanged
+    387
+    388						     ; printing	regs values
+    389	0324  BD 06D0				     mov bp, (ScreenWidth * (FrameBegLine + 2) + (FrameBegCol +	2) + 3)	* 2
+    390	0327  BE 0521r				     mov si, offset MemBuffer +	FrameSize * 2 +	(FrameWidth * 2	+ 5) * 2
+    391
+    392	032A  B9 0005				     mov cx, RegsNum
+    393	032D  EB 7A 90				     jmp @@IO08forClause
+    394
+    395	0330  E9 0082		     @@IO08noneLong: jmp @@IO08none
+    396
+    397	0333  49		     @@IO08forBegin: dec cx
+    398	0334  58				     pop ax
+    399
+Turbo Assembler	 Version 4.1	    02/23/24 02:16:51	    Page 8
+prog.asm
+
+
+
+    400	0335  8B D8				     mov bx, ax
+    401						     ;and bx, 0f000h
+    402	0337  C1 EB 0C				     shr bx, 16	- 4
+    403	033A  2E: 8A 9F	03FFr			     mov bl, cs:[offset	HexTable + bx]
+    404	033F  26: 88 5E	00			     mov byte ptr es:[bp], bl
+    405	0343  2E: 88 1C				     mov byte ptr cs:[si], bl
+    406	0346  83 C5 02				     add bp, 2
+    407	0349  83 C6 02				     add si, 2
+    408
+    409	034C  8B D8				     mov bx, ax
+    410	034E  81 E3 0F00			     and bx, 00f00h
+    411	0352  C1 EB 08				     shr bx, 16	- 8
+    412	0355  2E: 8A 9F	03FFr			     mov bl, cs:[offset	HexTable + bx]
+    413	035A  26: 88 5E	00			     mov byte ptr es:[bp], bl
+    414	035E  2E: 88 1C				     mov byte ptr cs:[si], bl
+    415	0361  83 C5 02				     add bp, 2
+    416	0364  83 C6 02				     add si, 2
+    417
+    418	0367  26: C6 46	00 3A			     mov byte ptr es:[bp], ':'
+    419	036C  2E: C6 04	3A			     mov byte ptr cs:[si], ':'
+    420	0370  83 C5 02				     add bp, 2
+    421	0373  83 C6 02				     add si, 2
+    422
+    423	0376  8B D8				     mov bx, ax
+    424	0378  81 E3 00F0			     and bx, 000f0h
+    425	037C  C1 EB 04				     shr bx, 16	- 12
+    426	037F  2E: 8A 9F	03FFr			     mov bl, cs:[offset	HexTable + bx]
+    427	0384  26: 88 5E	00			     mov byte ptr es:[bp], bl
+    428	0388  2E: 88 1C				     mov byte ptr cs:[si], bl
+    429	038B  83 C5 02				     add bp, 2
+    430	038E  83 C6 02				     add si, 2
+    431
+    432	0391  8B D8				     mov bx, ax
+    433	0393  83 E3 0F				     and bx, 0000fh
+    434						     ;shr bx, 16 - 16
+    435	0396  2E: 8A 9F	03FFr			     mov bl, cs:[offset	HexTable + bx]
+    436	039B  26: 88 5E	00			     mov byte ptr es:[bp], bl
+    437	039F  2E: 88 1C				     mov byte ptr cs:[si], bl
+    438
+    439	03A2  81 C5 0098			     add bp, (ScreenWidth - 4) * 2
+    440	03A6  83 C6 10				     add si, (FrameWidth - 5 + 1) * 2
+    441
+    442	03A9			     @@IO08forClause:
+    443	03A9  83 F9 00				     cmp cx, 0
+    444	03AC  77 85				     ja	@@IO08forBegin
+    445
+    446	03AE  5D 07 5E 5A 59 5B	58		     pop bp es si dx cx	bx ax
+    447	03B5			     @@IO08none:
+    448	03B5  EA				     db	0eah ; far jmp
+    449	03B6  0000		     Old08Offs	     dw	0
+    450	03B8  0000		     Old08Seg	     dw	0
+    451
+    452	03BA					     endp
+    453
+    454
+    455	03BA			     IntOverride09   proc
+    456
+Turbo Assembler	 Version 4.1	    02/23/24 02:16:51	    Page 9
+prog.asm
+
+
+
+    457	03BA  50				     push ax
+    458
+    459	03BB  E4 60				     in	al, 60h
+    460	03BD  3C 58				     cmp al, HotKeyOpenKeycode
+    461	03BF  75 12				     jne @@IO09elseif
+    462
+    463	03C1  2E: 80 3E	03F5r 00		     cmp cs:PopupCnt, 0
+    464	03C7  75 26				     jne @@IO09endif
+    465
+    466						     ; enable frame and	draw it
+    467	03C9  2E: C6 06	03F5r 01  +		     mov cs:PopupCnt, 1
+    468	      90
+    469
+    470	03D0  EB 1D 90				     jmp @@IO09endif
+    471
+    472	03D3  3C D8		     @@IO09elseif:   cmp al, HotKeyCloseKeycode
+    473	03D5  75 18				     jne @@IO09endif
+    474
+    475	03D7  2E: C6 06	03F5r 00  +		     mov cs:PopupCnt, 0
+    476	      90
+    477
+    478	03DE  53 51 52 06 56			     push bx cx	dx es si
+    479	03E3  68 B800				     push 0b800h
+    480	03E6  07				     pop es
+    481	03E7  E8 FE3F				     call RestoreFromBuf
+    482	03EA  5E 07 5A 59 5B			     pop si es dx cx bx
+    483	03EF			     @@IO09endif:
+    484	03EF  58				     pop ax
+    485
+    486	03F0  EA				     db	0eah ; far jmp
+    487	03F1  0000		     Old09Offs	     dw	0
+    488	03F3  0000		     Old09Seg	     dw	0
+    489
+    490	03F5					     endp
+    491
+    492
+    493	03F5  00		     PopupCnt	     db	0 ; 0 -	off; 1 - on; >=	2 - on and has already been drawn
+    494
+    495	03F6  DA C4 BF B3 20 B3	C0+  FrameStyle	     db	0dah, 0c4h, 0bfh, 0b3h,	Space, 0b3h, 0c0h, 0c4h, 0d9h ;	single frame
+    496	      C4 D9
+    497
+    498	03FF  30 31 32 33 34 35	36+  HexTable	     db	"0123456789ABCDEF"
+    499	      37 38 39 41 42 43	44+
+    500	      45 46
+    501
+    502	040F  D8*(0000)		     MemBuffer	     dw	(FrameWidth * FrameHeight * 2) dup(0) ;	first  half - old values
+    503											      ;	second half - actual
+    504
+    505	05BF			     EndOfProg:
+    506
+    507				     end	     Start
+Turbo Assembler	 Version 4.1	    02/23/24 02:16:51	    Page 10
 Symbol Table
 
 
@@ -432,25 +558,35 @@ Symbol Table
 
 Symbol Name			  Type	 Value
 
-??DATE				  Text	 "02/21/24"
+??DATE				  Text	 "02/23/24"
 ??FILENAME			  Text	 "prog	  "
-??TIME				  Text	 "24:43:07"
+??TIME				  Text	 "02:16:51"
 ??VERSION			  Number 040A
 @32BIT				  Text	 0
-@@DFLEWHILE			  Near	 DGROUP:017E
-@@DFLEWHILECLAUSE		  Near	 DGROUP:0184
-@@DFLWHILE			  Near	 DGROUP:01AC
-@@DFLWHILECLAUSE		  Near	 DGROUP:01B2
-@@DFWHILE			  Near	 DGROUP:013E
-@@DFWHILECLAUSE			  Near	 DGROUP:014F
-@@IO08FORBEGIN			  Near	 DGROUP:0242
-@@IO08FORCLAUSE			  Near	 DGROUP:0299
-@@IO08NONE			  Near	 DGROUP:02A4
-@@IO08NONELONG			  Near	 DGROUP:023F
-@@IO09ELSEIF			  Near	 DGROUP:0306
-@@IO09ENDIF			  Near	 DGROUP:0311
-@@IO09FORBEGIN			  Near	 DGROUP:02DD
-@@IO09FORCLAUSE			  Near	 DGROUP:02F9
+@@CICFORCOLSBEGIN		  Near	 DGROUP:026A
+@@CICFORCOLSCLAUSE		  Near	 DGROUP:0286
+@@CICFORLINESBEGIN		  Near	 DGROUP:0264
+@@CICFORLINESCLAUSE		  Near	 DGROUP:0290
+@@CICNOTHINGCHANGED		  Near	 DGROUP:027F
+@@DFFORBEGIN			  Near	 DGROUP:0157
+@@DFFORCLAUSE			  Near	 DGROUP:017F
+@@DFLEWHILE			  Near	 DGROUP:018F
+@@DFLEWHILECLAUSE		  Near	 DGROUP:01A3
+@@DFLWHILE			  Near	 DGROUP:01E2
+@@DFLWHILECLAUSE		  Near	 DGROUP:01F6
+@@DFWHILE			  Near	 DGROUP:0131
+@@DFWHILECLAUSE			  Near	 DGROUP:013A
+@@IO08FORBEGIN			  Near	 DGROUP:0333
+@@IO08FORCLAUSE			  Near	 DGROUP:03A9
+@@IO08ISALREADYINIT		  Near	 DGROUP:02FD
+@@IO08NONE			  Near	 DGROUP:03B5
+@@IO08NONELONG			  Near	 DGROUP:0330
+@@IO09ELSEIF			  Near	 DGROUP:03D3
+@@IO09ENDIF			  Near	 DGROUP:03EF
+@@RFBFORCOLSBEGIN		  Near	 DGROUP:023B
+@@RFBFORCOLSCLAUSE		  Near	 DGROUP:0248
+@@RFBFORLINESBEGIN		  Near	 DGROUP:0235
+@@RFBFORLINESCLAUSE		  Near	 DGROUP:0252
 @CODE				  Text	 DGROUP
 @CODESIZE			  Text	 0
 @CPU				  Text	 0707H
@@ -462,36 +598,40 @@ Symbol Name			  Type	 Value
 @MODEL				  Text	 1
 @STACK				  Text	 DGROUP
 @WORDSIZE			  Text	 2
+CHECKIFCHANGED			  Near	 DGROUP:0258
 DRAWFRAME			  Near	 DGROUP:010D
-DRAWFRAMEEMPTYLINE		  Near	 DGROUP:0169
-DRAWFRAMELINE			  Near	 DGROUP:0189
-ENDOFPROG			  Near	 DGROUP:0331
+DRAWFRAMEEMPTYLINE		  Near	 DGROUP:0185
+DRAWFRAMELINE			  Near	 DGROUP:01A8
+ENDOFPROG			  Near	 DGROUP:05BF
 F12PUSHKEYCODE			  Number 0058
 F12RELEASEKEYCODE		  Number 00D8
 FRAMEBEGCOL			  Number 0043
 FRAMEBEGLINE			  Number 0008
 FRAMEHEIGHT			  Number 0009
-FRAMESTYLE			  Byte	 DGROUP:0318
+FRAMESIZE			  Number 006C
+FRAMESTYLE			  Byte	 DGROUP:03F6
 FRAMEWIDTH			  Number 000C
-HEXTABLE			  Byte	 DGROUP:0321
-HOTKEYCLOSEKEYCODE		  Alias	 F12RELEASEKEYCODE
-HOTKEYOPENKEYCODE		  Alias	 F12PUSHKEYCODE
-INTOVERRIDE08			  Near	 DGROUP:020B
-INTOVERRIDE09			  Near	 DGROUP:02A9
-MAIN				  Near	 DGROUP:01C9
-OLD08OFFS			  Word	 DGROUP:02A5
-OLD08SEG			  Word	 DGROUP:02A7
-OLD09OFFS			  Word	 DGROUP:0313
-OLD09SEG			  Word	 DGROUP:0315
-POPUPCNT			  Byte	 DGROUP:0317
-REGSNAMES			  Byte	 DGROUP:0103
-REGSNUM				  Number 0005
-Turbo Assembler	 Version 4.1	    02/21/24 24:43:07	    Page 9
+HEXTABLE			  Byte	 DGROUP:03FF
+Turbo Assembler	 Version 4.1	    02/23/24 02:16:51	    Page 11
 Symbol Table
 
 
 
+HOTKEYCLOSEKEYCODE		  Alias	 F12RELEASEKEYCODE
+HOTKEYOPENKEYCODE		  Alias	 F12PUSHKEYCODE
+INTOVERRIDE08			  Near	 DGROUP:02D8
+INTOVERRIDE09			  Near	 DGROUP:03BA
+MAIN				  Near	 DGROUP:0296
+MEMBUFFER			  Word	 DGROUP:040F
+OLD08OFFS			  Word	 DGROUP:03B6
+OLD08SEG			  Word	 DGROUP:03B8
+OLD09OFFS			  Word	 DGROUP:03F1
+OLD09SEG			  Word	 DGROUP:03F3
+POPUPCNT			  Byte	 DGROUP:03F5
+REGSNAMES			  Byte	 DGROUP:0103
+REGSNUM				  Number 0005
 REGSPUSH			  Text	 sp dx cx bx ax
+RESTOREFROMBUF			  Near	 DGROUP:0229
 SCREENHEIGHT			  Number 001A
 SCREENWIDTH			  Number 0050
 SPACE				  Number 0020
@@ -501,5 +641,5 @@ Groups & Segments		  Bit Size Align  Combine Class
 
 DGROUP				  Group
   _DATA				  16  0000 Word	  Public  DATA
-  _TEXT				  16  0331 Word	  Public  CODE
+  _TEXT				  16  05BF Word	  Public  CODE
 
