@@ -9,15 +9,17 @@ Start:		jmp main
 ScreenWidth	equ 80
 ScreenHeight	equ 26
 
-RegsNum		equ 5 			; regs list config
-RegsNames 	db "axbxcxdxsp"
-RegsPush	equ sp dx cx bx ax
+RegsNum		equ 7 			; regs list config
+RegsNames 	db "axbxcxdxspbpes"
+RegsPush	equ es bp sp dx cx bx ax
 
 F12pushKeycode		equ 58h
 F12releaseKeycode	equ F12pushKeycode + 128
 
-HotKeyOpenKeycode 	equ F12pushKeycode
-HotKeyCloseKeycode 	equ F12releaseKeycode
+HotKeyOpenKeycode 	equ 57h
+HotKeyCloseKeycode 	equ 58h
+
+TimerPeriod	equ 2
 
 Space		equ ' '
 
@@ -370,7 +372,7 @@ IntOverride08	proc
 
 @@IO08isAlreadyInit:
 		inc cs:PopupCnt
-		cmp cs:PopupCnt, 6
+		cmp cs:PopupCnt, TimerPeriod
 		jb @@IO08noneLong
 
 		mov cs:PopupCnt, 2
