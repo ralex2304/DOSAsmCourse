@@ -9,25 +9,22 @@ Start:		jmp main
 ScreenWidth	equ 80
 ScreenHeight	equ 26
 
-RegsNum		equ 7 			; regs list config
-RegsNames 	db "axbxcxdxspbpes"
-RegsPush	equ es bp sp dx cx bx ax
 
-F12pushKeycode		equ 58h
-F12releaseKeycode	equ F12pushKeycode + 128
+RegsNum		equ 13 	; regs list config
+RegsNames 	db "axbxcxdxsidibpspdsesssipcs"
 
-HotKeyOpenKeycode 	equ 57h
-HotKeyCloseKeycode 	equ 58h
+HotKeyOpenKeycode 	equ 1eh ; A - keycode ;;;57h ; F11 keycode
+HotKeyCloseKeycode 	equ 1fh ; S - keycode ;;;58h ; F12 keycode
 
 TimerPeriod	equ 2
 
 Space		equ ' '
 
-FrameBegLine	equ 8
-FrameBegCol	equ 67
+FrameBegLine	equ 3
+FrameBegCol	equ 68
 
 FrameHeight	equ RegsNum + 4
-FrameWidth	equ 12
+FrameWidth	equ 11
 
 FrameSize	equ FrameHeight * FrameWidth
 
@@ -110,6 +107,34 @@ DrawFrame	proc
 ;---------------------------------------
 
 ;--------------------------------------
+; Writes one symbol to videomem and supports all buffers
+;
+; Entry:	bp = style str addr
+;		bx = line beginning symbol addr
+;		si = position in mem buf
+;		dh = color
+;		dl = symbol
+;
+; Assumes:	es = 0b800h
+;		ds allows to reach style_str
+;
+; Destr:	cx
+; Return:	bx = the next symbol
+;		si = the next symbol
+;--------------------------------------
+WriteSymbol	macro
+
+		mov cx, es:[bx]
+		mov cs:[si], cx
+		mov es:[bx], dx
+		mov cs:[si + FrameSize * 2], dx
+		add bx, 2
+		add si, 2
+
+		endm
+;--------------------------------------
+
+;--------------------------------------
 ; Draws one empty line of frame
 ; DrawFrameEmptyLine
 ; Entry:	bx = line beginning symbol addr
@@ -121,7 +146,7 @@ DrawFrame	proc
 ; Destr:	ax, cx, dl
 ; Return:	bx = symbol after the last symbol in the line
 ;		si = symbol after the last symbol in mem buf
-;-------------------------------------
+;--------------------------------------
 
 DrawFrameEmptyLine	proc
 
@@ -132,14 +157,7 @@ DrawFrameEmptyLine	proc
 
 		jmp @@DFLEwhileClause
 @@DFLEwhile:
-		mov cx, es:[bx]
-		mov cs:[si], cx
-
-		mov es:[bx], dx
-		mov cs:[si + FrameSize * 2], dx
-		add bx, 2
-		add si, 2
-
+		WriteSymbol
 @@DFLEwhileClause:
 		cmp bx, ax
 		jb @@DFLEwhile
@@ -162,27 +180,17 @@ DrawFrameEmptyLine	proc
 ; Destr:	ax, cx, dl
 ; Return:	bx = symbol after the last symbol in the line
 ;		si = symbol after the last symbol in mem buf
-;-------------------------------------
+;--------------------------------------
 
 DrawFrameLine	proc
 
 		; write empty symbol
 		mov dl, Space
-		mov cx, es:[bx]
-		mov cs:[si], cx
-		mov es:[bx], dx
-		mov cs:[si + FrameSize * 2], dx
-		add bx, 2
-		add si, 2
+		WriteSymbol
 
 		; write left symbol
 		mov dl, cs:[bp]
-		mov cx, es:[bx]
-		mov cs:[si], cx
-		mov es:[bx], dx
-		mov cs:[si + FrameSize * 2], dx
-		add bx, 2
-		add si, 2
+		WriteSymbol
 
 		mov dl, cs:[bp + 1]
 
@@ -191,34 +199,18 @@ DrawFrameLine	proc
 
 		jmp @@DFLwhileClause
 @@DFLwhile:
-		mov cx, es:[bx]
-		mov cs:[si], cx
-		mov es:[bx], dx
-		mov cs:[si + FrameSize * 2], dx
-		add bx, 2
-		add si, 2
-
+		WriteSymbol
 @@DFLwhileClause:
 		cmp bx, ax
 		jb @@DFLwhile
 
 		; write right symbol
 		mov dl, cs:[bp + 2]
-		mov cx, es:[bx]
-		mov cs:[si], cx
-		mov es:[bx], dx
-		mov cs:[si + FrameSize * 2], dx
-		add bx, 2
-		add si, 2
+		WriteSymbol
 
 		; write empty symbol
 		mov dl, Space
-		mov cx, es:[bx]
-		mov cs:[si], cx
-		mov es:[bx], dx
-		mov cs:[si + FrameSize * 2], dx
-		add bx, 2
-		add si, 2
+		WriteSymbol
 
 		ret
 		endp
@@ -314,71 +306,92 @@ CheckIfChanged	proc
 		endp
 ;---------------------------------------
 
-main:		; timer - IRQ0
-		mov ax, 3508h
-		int 21h		; get int vector addr in es:bx
+;--------------------------------------
+; Converts 2 bytes to text hex and writes to es:[bp] and cs:[si]
+;
+; Entry:	ax - hex data
+;		es:[bp] - dest address
+;		cs:[si] - dest address
+;
+; Destr:	ax, bx, cx
+; Return:	bp = symbol after the last symbol
+;		si = symbol after the last symbol in mem buf
+;--------------------------------------
+ConvertAndWriteHex	proc
 
-		mov Old08Offs, bx
-		mov bx, es
-		mov Old08Seg, bx
+		; ax - data
+		mov cx, 4
+@@ConvertHexLoop:
+		mov bx, ax
+		shr bx, 12
+		mov bl, cs:[offset HexTable + bx]
 
-		push ds ; save ds
-		mov dx, offset IntOverride08
-		push cs
-		pop ds
-		mov ax, 2508h
-		int 21h		; set int vector addr from ds: dx
-		pop ds ; restore ds
+		mov byte ptr es:[bp], bl
+		mov byte ptr cs:[si], bl
+		add bp, 2
+		add si, 2
 
-		; keybord - IRQ1
-		mov ax, 3509h
-		int 21h		; get int vector addr in es:bx
+		shl ax, 4
+		loop @@ConvertHexLoop
 
-		mov Old09Offs, bx
-		mov bx, es
-		mov Old09Seg, bx
+		ret
+		endp
+;--------------------------------------
 
-		push ds ; save ds
-		mov dx, offset IntOverride09
-		push cs
-		pop ds
-		mov ax, 2509h
-		int 21h		; set int vector addr from ds: dx
-		pop ds ; restore ds
+;--------------------------------------
+; Prints regs values in column
+;
+; Entry:	ss:[sp] - first reg value. ss:[sp + n] - the next registers values
+;		es:[bp] - dest address
+;		cs:[si] - dest address
+;
+; Destr:	ax, bx, cx, di
+;--------------------------------------
+WriteRegsValues proc
 
-		; stay resident
-		mov dx, offset EndOfProg
-		shr dx, 4
-		inc dx 		; sizeof(prog) / 16 + 1
-		mov ax, 3100h
-		int 21h
+		mov di, 2 ; skip ret addr
+		jmp @@WRVforClause
 
+@@WRVforBegin:  mov bx, sp
+		add bx, di
+		mov ax, ss:[bx]
+
+		call ConvertAndWriteHex
+
+		add bp, (ScreenWidth - 1 - 3) * 2
+		add si, (FrameWidth - 1 - 4 + 1) * 2
+
+		add di, 2
+@@WRVforClause:
+		cmp di, RegsNum * 2 + 2
+		jb @@WRVforBegin
+
+		ret
+		endp
+;--------------------------------------
+
+;======================================
 IntOverride08	proc
 
 		cmp cs:PopupCnt, 0
 		je @@IO08noneLong
 
+		push ss es ds sp bp di si dx cx bx ax
+
 		cmp cs:PopupCnt, 1
 		jne @@IO08isAlreadyInit
-
-		push ax bx cx dx si es bp
 
 		push 0b800h
 		pop es
 
 		call DrawFrame
 
-		pop bp es si dx cx bx ax
-
 @@IO08isAlreadyInit:
 		inc cs:PopupCnt
 		cmp cs:PopupCnt, TimerPeriod
-		jb @@IO08noneLong
+		jb @@IO08nonePopLong
 
 		mov cs:PopupCnt, 2
-
-		push ax bx cx dx si es bp
-		push RegsPush
 
 		push 0b800h
 		pop es
@@ -389,69 +402,26 @@ IntOverride08	proc
 		mov bp, (ScreenWidth * (FrameBegLine + 2) + (FrameBegCol + 2) + 3) * 2
 		mov si, offset MemBuffer + FrameSize * 2 + (FrameWidth * 2 + 5) * 2
 
-		mov cx, RegsNum
-		jmp @@IO08forClause
+		jmp @@IO08writeRegs
 
-@@IO08noneLong: jmp @@IO08none
+@@IO08nonePopLong:
+		pop ax bx cx dx si di bp sp ds es ss
 
-@@IO08forBegin: dec cx
-		pop ax
+@@IO08noneLong: jmp @@IO08none ; long jump
 
-		mov bx, ax
-		;and bx, 0f000h
-		shr bx, 16 - 4
-		mov bl, cs:[offset HexTable + bx]
-		mov byte ptr es:[bp], bl
-		mov byte ptr cs:[si], bl
-		add bp, 2
-		add si, 2
+@@IO08writeRegs:
+		call WriteRegsValues
 
-		mov bx, ax
-		and bx, 00f00h
-		shr bx, 16 - 8
-		mov bl, cs:[offset HexTable + bx]
-		mov byte ptr es:[bp], bl
-		mov byte ptr cs:[si], bl
-		add bp, 2
-		add si, 2
-
-		mov byte ptr es:[bp], ':'
-		mov byte ptr cs:[si], ':'
-		add bp, 2
-		add si, 2
-
-		mov bx, ax
-		and bx, 000f0h
-		shr bx, 16 - 12
-		mov bl, cs:[offset HexTable + bx]
-		mov byte ptr es:[bp], bl
-		mov byte ptr cs:[si], bl
-		add bp, 2
-		add si, 2
-
-		mov bx, ax
-		and bx, 0000fh
-		;shr bx, 16 - 16
-		mov bl, cs:[offset HexTable + bx]
-		mov byte ptr es:[bp], bl
-		mov byte ptr cs:[si], bl
-
-		add bp, (ScreenWidth - 4) * 2
-		add si, (FrameWidth - 5 + 1) * 2
-
-@@IO08forClause:
-		cmp cx, 0
-		ja @@IO08forBegin
-
-		pop bp es si dx cx bx ax
+		pop ax bx cx dx si di bp sp ds es ss
 @@IO08none:
 		db 0eah ; far jmp
 Old08Offs	dw 0
 Old08Seg	dw 0
 
 		endp
+;======================================
 
-
+;======================================
 IntOverride09	proc
 
 		push ax
@@ -461,15 +431,18 @@ IntOverride09	proc
 		jne @@IO09elseif
 
 		cmp cs:PopupCnt, 0
-		jne @@IO09endif
+		jne @@IO09isHotKey
 
 		; enable frame and draw it
 		mov cs:PopupCnt, 1
 
-		jmp @@IO09endif
+		jmp @@IO09isHotKey
 
 @@IO09elseif:	cmp al, HotKeyCloseKeycode
-		jne @@IO09endif
+		jne @@IO09notHotKey
+
+		cmp cs:PopupCnt, 0
+		je @@IO09isHotKey
 
 		mov cs:PopupCnt, 0
 
@@ -478,14 +451,38 @@ IntOverride09	proc
 		pop es
 		call RestoreFromBuf
 		pop si es dx cx bx
-@@IO09endif:
+
+		jmp @@IO09isHotKey
+
+@@IO09notHotKey:
+
+		and al, 01111111b
+		cmp al, HotKeyOpenKeycode
+		je @@IO09isHotKey
+
+		cmp al, HotKeyCloseKeycode
+		je @@IO09isHotKey
+
 		pop ax
 
 		db 0eah ; far jmp
 Old09Offs	dw 0
 Old09Seg	dw 0
 
+@@IO09isHotKey:
+		in al, 61h
+		or al, 80h
+		out 61h, al
+		and al, not 80h
+		out 61h, al
+
+		mov al, 20h ; send EOI to interrupt ctrl
+		out 20h, al
+
+		pop ax
+		iret
 		endp
+;======================================
 
 
 PopupCnt	db 0 ; 0 - off; 1 - on; >= 2 - on and has already been drawn
@@ -498,5 +495,44 @@ MemBuffer	dw (FrameWidth * FrameHeight * 2) dup(0) ; first  half - old values
 							 ; second half - actual
 
 EndOfProg:
+
+main:		; timer - IRQ0
+		mov ax, 3508h
+		int 21h	; get int vector addr in es:bx
+
+		mov Old08Offs, bx
+		mov bx, es
+		mov Old08Seg, bx
+
+		push ds ; save ds
+		mov dx, offset IntOverride08
+		push cs
+		pop ds
+		mov ax, 2508h
+		int 21h ; set int vector addr from ds: dx
+		pop ds  ; restore ds
+
+		; keybord - IRQ1
+		mov ax, 3509h
+		int 21h	; get int vector addr in es:bx
+
+		mov Old09Offs, bx
+		mov bx, es
+		mov Old09Seg, bx
+
+		push ds ; save ds
+		mov dx, offset IntOverride09
+		push cs
+		pop ds
+		mov ax, 2509h
+		int 21h	; set int vector addr from ds: dx
+		pop ds  ; restore ds
+
+		; stay resident
+		mov dx, offset EndOfProg
+		shr dx, 4
+		inc dx 	; sizeof(prog) / 16 + 1
+		mov ax, 3100h
+		int 21h
 
 end		Start

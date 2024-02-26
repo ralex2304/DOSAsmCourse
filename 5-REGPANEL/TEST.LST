@@ -1,0 +1,94 @@
+Turbo Assembler	 Version 4.1	    02/26/24 19:04:31	    Page 1
+test.asm
+
+
+
+      1	0000			     .model tiny
+      2	0000			     .code
+      3				     .286
+      4				     org 100h
+      5
+      6	0100  BD 0159r		     Start:	     mov bp, offset MyStr
+      7
+      8	0103  8C C8				     mov ax, cs
+      9
+     10						     ; ax - data
+     11	0105  B9 0004				     mov cx, 4
+     12	0108			     @@ConvertHexLoop:
+     13	0108  8B D8				     mov bx, ax
+     14	010A  C1 EB 0C				     shr bx, 12
+     15	010D  8A 9F 0149r			     mov bl, [offset HexTable +	bx]
+     16
+     17	0111  88 5E 00				     mov byte ptr [bp],	bl
+     18	0114  45				     inc bp
+     19
+     20	0115  C1 E0 04				     shl ax, 4
+     21	0118  E2 EE				     loop @@ConvertHexLoop
+     22
+     23	011A  B4 09				     mov ah, 09h
+     24	011C  BA 0159r				     mov dx, offset MyStr
+     25	011F  CD 21				     int 21h		     ; puts(MyStr)
+     26
+     27	0121  B8 1111				     mov ax, 1111h
+     28	0124  BB 2222				     mov bx, 2222h
+     29	0127  B9 3333				     mov cx, 3333h
+     30	012A  BA 4444				     mov dx, 4444h
+     31	012D  BE 5555				     mov si, 5555h
+     32	0130  BF 6666				     mov di, 6666h
+     33	0133  BD 7777				     mov bp, 7777h
+     34
+     35	0136  68 9999				     push 9999h
+     36	0139  1F				     pop ds
+     37	013A  68 AAAA				     push 0aaaah
+     38	013D  07				     pop es
+     39
+     40	013E			     @@whileBegin:
+     41	013E  E4 60				     in	al, 60h
+     42	0140  3C 01				     cmp al, 1
+     43	0142  75 FA				     jne @@whileBegin
+     44
+     45	0144  B8 4C00				     mov ax, 4c00h
+     46	0147  CD 21				     int 21h		     ; exit(al = 0)
+     47
+     48	0149  30 31 32 33 34 35	36+  HexTable	     db	"0123456789ABCDEF"
+     49	      37 38 39 41 42 43	44+
+     50	      45 46
+     51	0159  04*(5F) 24	     MyStr db 4	dup("_"), "$"
+     52
+     53				     end Start
+Turbo Assembler	 Version 4.1	    02/26/24 19:04:31	    Page 2
+Symbol Table
+
+
+
+
+Symbol Name			  Type	 Value
+
+??DATE				  Text	 "02/26/24"
+??FILENAME			  Text	 "test	  "
+??TIME				  Text	 "19:04:31"
+??VERSION			  Number 040A
+@32BIT				  Text	 0
+@@CONVERTHEXLOOP		  Near	 DGROUP:0108
+@@WHILEBEGIN			  Near	 DGROUP:013E
+@CODE				  Text	 DGROUP
+@CODESIZE			  Text	 0
+@CPU				  Text	 0707H
+@CURSEG				  Text	 _TEXT
+@DATA				  Text	 DGROUP
+@DATASIZE			  Text	 0
+@FILENAME			  Text	 TEST
+@INTERFACE			  Text	 000H
+@MODEL				  Text	 1
+@STACK				  Text	 DGROUP
+@WORDSIZE			  Text	 2
+HEXTABLE			  Byte	 DGROUP:0149
+MYSTR				  Byte	 DGROUP:0159
+START				  Near	 DGROUP:0100
+
+Groups & Segments		  Bit Size Align  Combine Class
+
+DGROUP				  Group
+  _DATA				  16  0000 Word	  Public  DATA
+  _TEXT				  16  015E Word	  Public  CODE
+
