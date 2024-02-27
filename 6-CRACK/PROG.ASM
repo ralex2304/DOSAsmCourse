@@ -81,7 +81,7 @@ RecievePswd	proc
 		mov dx, 0
 
 @@WhileInputBegin:
-		mov ah, 01h
+		mov ah, 08h
 		int 21h ; keybd input to al
 
 		cmp dx, MaxPasswdLen - 1

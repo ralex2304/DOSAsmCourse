@@ -1,4 +1,4 @@
-Turbo Assembler	 Version 4.1	    02/27/24 03:06:53	    Page 1
+Turbo Assembler	 Version 4.1	    02/27/24 03:17:57	    Page 1
 prog.asm
 
 
@@ -60,7 +60,7 @@ prog.asm
      55	0138  89 1E 0103r			     mov word ptr [offset InputPswdHash], bx
      56
      57	013C  47				     inc di
-Turbo Assembler	 Version 4.1	    02/27/24 03:06:53	    Page 2
+Turbo Assembler	 Version 4.1	    02/27/24 03:17:57	    Page 2
 prog.asm
 
 
@@ -91,7 +91,7 @@ prog.asm
      81	014F  BA 0000				     mov dx, 0
      82
      83	0152			     @@WhileInputBegin:
-     84	0152  B4 01				     mov ah, 01h
+     84	0152  B4 08				     mov ah, 08h
      85	0154  CD 21				     int 21h ; keybd input to al
      86
      87	0156  83 FA 7F				     cmp dx, MaxPasswdLen - 1
@@ -122,7 +122,7 @@ prog.asm
     112	017E			     @@RPcorrectPswd:
     113
     114						     ; correct ret addr	to skip	PasswdInput data
-Turbo Assembler	 Version 4.1	    02/27/24 03:06:53	    Page 3
+Turbo Assembler	 Version 4.1	    02/27/24 03:17:57	    Page 3
 prog.asm
 
 
@@ -184,7 +184,7 @@ prog.asm
     169	01D6  48*(DE)				     db	(MaxPasswdLen -	(PasswdInputFakeCodeEnd	- PasswdInput) + 1) dup(0deh)
     170						     ; input/fake code field end						    +
     171				     =======================================================
-Turbo Assembler	 Version 4.1	    02/27/24 03:06:53	    Page 4
+Turbo Assembler	 Version 4.1	    02/27/24 03:17:57	    Page 4
 prog.asm
 
 
@@ -227,7 +227,7 @@ prog.asm
     207	      64 61 6C 73 68 65	0D+
     208	      0A 24
     209				     end Start
-Turbo Assembler	 Version 4.1	    02/27/24 03:06:53	    Page 5
+Turbo Assembler	 Version 4.1	    02/27/24 03:17:57	    Page 5
 Symbol Table
 
 
@@ -237,7 +237,7 @@ Symbol Name			  Type	 Value
 
 ??DATE				  Text	 "02/27/24"
 ??FILENAME			  Text	 "prog	  "
-??TIME				  Text	 "03:06:53"
+??TIME				  Text	 "03:17:57"
 ??VERSION			  Number 040A
 @32BIT				  Text	 0
 @@CORRECTPASSWD			  Near	 DGROUP:0223
